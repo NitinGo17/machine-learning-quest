@@ -1,0 +1,2502 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Machine Learning Quest — learn ML from two decks</title>
+<meta name="description" content="An interactive, gamified, offline website that teaches machine learning, built entirely from two lecture decks by Payal Gupta.">
+<meta name="color-scheme" content="light dark">
+<style>
+/* =========================================================================
+   MACHINE LEARNING QUEST — design system
+   Bright, playful "game map" theme. Light + dark mode via CSS variables.
+   Everything is offline: no web fonts, no external assets.
+   Edit the palette in :root / [data-theme="dark"] below.
+   ========================================================================= */
+
+:root{
+  /* ---- core surfaces (light) ---- */
+  --bg:#fff8ee;
+  --bg-2:#fdeedd;
+  --surface:#ffffff;
+  --surface-2:#fffdf8;
+  --ink:#241f33;
+  --ink-soft:#5a5470;
+  --ink-faint:#6f6885;
+  --line:#e9dfce;
+  --line-strong:#d8cbb4;
+
+  /* ---- brand ---- */
+  --brand:#ff7a59;          /* warm coral */
+  --brand-2:#ffb020;        /* marigold */
+  --good:#12b886;
+  --bad:#f0506e;
+  --warn:#f7a325;
+
+  /* ---- per-level accent colours (used for maps, badges, flowcharts) ---- */
+  --c1:#ff6b6b;   /* L1  coral   */
+  --c2:#ff922b;   /* L2  orange  */
+  --c3:#fcc419;   /* L3  sun     */
+  --c4:#94c940;   /* L4  lime    */
+  --c5:#20c997;   /* L5  mint    */
+  --c6:#15aabf;   /* L6  teal    */
+  --c7:#4dabf7;   /* L7  sky     */
+  --c8:#5c7cfa;   /* L8  indigo  */
+  --c9:#9775fa;   /* L9  violet  */
+  --c10:#f06595;  /* L10 pink    */
+  --cboss:#f59f00;/* boss gold   */
+
+  /* ---- shape + motion ---- */
+  --r-sm:10px; --r:16px; --r-lg:24px; --r-xl:34px;
+  --shadow:0 2px 0 var(--line-strong), 0 10px 24px rgba(80,60,20,.08);
+  --shadow-pop:0 3px 0 var(--line-strong), 0 16px 34px rgba(80,60,20,.16);
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --font: "SF Pro Rounded","Nunito","Quicksand","Segoe UI Variable","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif;
+  --mono: ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+}
+
+[data-theme="dark"]{
+  --bg:#161225;
+  --bg-2:#1d1832;
+  --surface:#221c38;
+  --surface-2:#2a2344;
+  --ink:#f4f0ff;
+  --ink-soft:#b9b1d6;
+  --ink-faint:#9a91bd;
+  --line:#332a52;
+  --line-strong:#413463;
+  --shadow:0 2px 0 #12101f, 0 12px 28px rgba(0,0,0,.4);
+  --shadow-pop:0 3px 0 #12101f, 0 18px 40px rgba(0,0,0,.5);
+  /* accents get a touch brighter for dark bg */
+  --c1:#ff8787; --c2:#ffa94d; --c3:#ffd43b; --c4:#a9e34b; --c5:#38d9a9;
+  --c6:#3bc9db; --c7:#74c0fc; --c8:#91a7ff; --c9:#b197fc; --c10:#f783ac;
+  --cboss:#ffc078;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font);
+  background:
+     radial-gradient(1200px 500px at 15% -10%, var(--bg-2), transparent 60%),
+     radial-gradient(1000px 500px at 100% 0%, var(--bg-2), transparent 55%),
+     var(--bg);
+  color:var(--ink);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+body.no-scroll{overflow:hidden}
+
+h1,h2,h3,h4{line-height:1.2;margin:0 0 .4em;font-weight:800;letter-spacing:-.01em}
+h1{font-size:clamp(1.7rem,4vw,2.6rem)}
+h2{font-size:clamp(1.35rem,3vw,1.9rem)}
+h3{font-size:1.15rem}
+p{margin:0 0 .9em}
+a{color:var(--c8);text-underline-offset:3px}
+small{color:var(--ink-faint)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:6px}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1080px;margin:0 auto;padding:0 18px}
+.view{display:none;animation:fade .35s var(--ease)}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.stack>*+*{margin-top:14px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+
+/* ---------- top bar (HUD) ---------- */
+.hud{
+  position:sticky;top:0;z-index:60;
+  background:color-mix(in srgb,var(--surface) 88%, transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:2px solid var(--line);
+}
+.hud .wrap{display:flex;align-items:center;gap:14px;padding-top:10px;padding-bottom:10px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:900;font-size:1.05rem;white-space:nowrap;cursor:pointer;background:none;border:0;color:inherit}
+.logo .gem{font-size:1.4rem}
+.hud-stats{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface-2);border:2px solid var(--line);border-radius:999px;
+  padding:5px 12px;font-weight:800;font-size:.86rem;white-space:nowrap;
+}
+.chip b{font-variant-numeric:tabular-nums}
+.hearts{color:var(--bad)}
+.iconbtn{
+  border:2px solid var(--line);background:var(--surface-2);color:var(--ink);
+  width:40px;height:40px;border-radius:12px;font-size:1.05rem;cursor:pointer;
+  display:inline-grid;place-items:center;transition:transform .15s var(--ease),background .15s;
+}
+.iconbtn:hover{transform:translateY(-2px)}
+.xpwrap{min-width:130px}
+.xpbar{height:10px;background:var(--line);border-radius:999px;overflow:hidden;border:1px solid var(--line-strong)}
+.xpbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-2));width:0;transition:width .6s var(--ease)}
+.xpbar-label{font-size:.72rem;font-weight:800;color:var(--ink-soft);margin-bottom:2px}
+
+/* ---------- buttons ---------- */
+.btn{
+  border:2px solid var(--line-strong);background:var(--surface);color:var(--ink);
+  padding:11px 20px;border-radius:14px;font-weight:800;font-size:.95rem;cursor:pointer;
+  font-family:inherit;transition:transform .14s var(--ease),box-shadow .14s var(--ease);
+  box-shadow:0 2px 0 var(--line-strong);
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 4px 0 var(--line-strong)}
+.btn:active{transform:translateY(0)}
+.btn.primary{background:var(--brand);border-color:color-mix(in srgb,var(--brand) 60%, #000);color:#fff;box-shadow:0 3px 0 color-mix(in srgb,var(--brand) 55%, #000)}
+.btn.primary:hover{box-shadow:0 5px 0 color-mix(in srgb,var(--brand) 55%, #000)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:7px 14px;font-size:.85rem;border-radius:11px}
+.btn[disabled]{opacity:.5;cursor:not-allowed;transform:none!important;box-shadow:none}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--surface);border:2px solid var(--line);border-radius:var(--r-lg);
+  padding:20px;box-shadow:var(--shadow);
+}
+.card.tight{padding:14px}
+.hero{
+  text-align:center;padding:34px 20px;border-radius:var(--r-xl);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--brand) 14%,var(--surface)),var(--surface));
+  border:2px solid var(--line);box-shadow:var(--shadow-pop);margin:18px 0;
+}
+.hero .kicker{font-weight:900;color:var(--brand);letter-spacing:.06em;text-transform:uppercase;font-size:.78rem}
+.hero p{max-width:60ch;margin-inline:auto;color:var(--ink-soft)}
+
+/* ---------- level map (the game path) ---------- */
+.map{position:relative;padding:26px 0 10px}
+.map-path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible}
+.map-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media(max-width:360px){.map-grid{grid-template-columns:minmax(0,1fr)}}
+@media(min-width:760px){.map-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:1020px){.map-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+.node{
+  position:relative;min-width:0;overflow-wrap:anywhere;background:var(--surface);border:3px solid var(--line-strong);
+  border-radius:var(--r-lg);padding:16px;cursor:pointer;text-align:left;color:inherit;
+  font-family:inherit;box-shadow:var(--shadow);transition:transform .18s var(--ease),box-shadow .18s var(--ease);
+  display:flex;flex-direction:column;gap:8px;min-height:158px;
+}
+.node:hover{transform:translateY(-4px) rotate(-.4deg);box-shadow:var(--shadow-pop)}
+.node .badge-dot{
+  position:absolute;top:-12px;right:14px;width:30px;height:30px;border-radius:50%;
+  display:grid;place-items:center;font-weight:900;color:#fff;border:3px solid var(--surface);
+  background:var(--accent,var(--brand));font-size:.85rem;
+}
+.node .em{font-size:2rem;line-height:1}
+.node h3{font-size:1.02rem;margin:0;overflow-wrap:anywhere}
+.node .n-blurb{font-size:.82rem;color:var(--ink-soft);margin:0}
+.node .n-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:.78rem;font-weight:800}
+.node .stars{letter-spacing:1px}
+.node .accent-bar{height:7px;border-radius:999px;background:var(--accent,var(--brand));margin:-4px 0 2px}
+.node.locked{opacity:.62;filter:grayscale(.7);cursor:not-allowed}
+.node.locked .lock{position:absolute;inset:0;display:grid;place-items:center;font-size:1.6rem;background:color-mix(in srgb,var(--surface) 55%,transparent);border-radius:inherit}
+.node.done{border-color:var(--good)}
+.node.done .tick{color:var(--good)}
+.node.boss{grid-column:1/-1;background:linear-gradient(180deg,color-mix(in srgb,var(--cboss) 22%,var(--surface)),var(--surface));min-height:auto;flex-direction:row;align-items:center;gap:16px}
+.node.boss .em{font-size:2.6rem}
+.node.pulse{animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{box-shadow:var(--shadow)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--brand) 22%,transparent),var(--shadow)}}
+
+/* ---------- level page ---------- */
+.lvl-head{border-radius:var(--r-lg);padding:22px;border:2px solid var(--line);background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 18%,var(--surface)),var(--surface));margin:16px 0}
+.lvl-head .crumb{font-size:.8rem;font-weight:800;color:var(--ink-soft)}
+.lvl-head h1{display:flex;align-items:center;gap:12px;margin:.15em 0}
+.lvl-head .em{font-size:2.2rem}
+.section-title{display:flex;align-items:center;gap:9px;font-size:1.05rem;font-weight:900;margin:22px 0 10px;color:var(--ink)}
+.section-title .pill{background:var(--accent,var(--brand));color:#fff;border-radius:999px;padding:2px 10px;font-size:.72rem}
+.prose p{color:var(--ink-soft)}
+.prose strong{color:var(--ink)}
+.analogy{border-left:5px solid var(--accent,var(--brand));background:var(--surface-2);border-radius:0 var(--r) var(--r) 0;padding:12px 16px;margin:10px 0}
+.analogy b{display:block;color:var(--ink)}
+.termgrid{display:grid;gap:10px;grid-template-columns:1fr}
+@media(min-width:640px){.termgrid{grid-template-columns:1fr 1fr}}
+.term{background:var(--surface-2);border:2px solid var(--line);border-radius:var(--r);padding:11px 14px}
+.term b{color:var(--accent,var(--brand))}
+.term p{margin:.2em 0 0;font-size:.9rem;color:var(--ink-soft)}
+
+/* ---------- flowchart / diagram ---------- */
+.figure{background:var(--surface);border:2px solid var(--line);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);overflow:hidden}
+.figure .fig-title{font-weight:900;margin-bottom:2px;display:flex;gap:8px;align-items:center}
+.figure .fig-cap{font-size:.85rem;color:var(--ink-faint);margin:0 0 10px}
+.fc-scroll{overflow-x:auto;padding-bottom:6px}
+svg.flow{display:block;min-width:520px;width:100%;height:auto}
+.flow .fnode{cursor:pointer}
+.flow .fnode rect,.flow .fnode polygon,.flow .fnode ellipse{transition:filter .15s,transform .15s;transform-box:fill-box;transform-origin:center}
+.flow .fnode:hover rect,.flow .fnode:hover polygon,.flow .fnode:hover ellipse{filter:brightness(1.08) drop-shadow(0 4px 8px rgba(0,0,0,.18));transform:translateY(-2px)}
+.flow .fnode.sel rect,.flow .fnode.sel polygon,.flow .fnode.sel ellipse{stroke:#241f33;stroke-width:3}
+[data-theme="dark"] .flow .fnode.sel rect,[data-theme="dark"] .flow .fnode.sel polygon,[data-theme="dark"] .flow .fnode.sel ellipse{stroke:#fff}
+.flow .flabel{font-weight:800;fill:#fff;pointer-events:none;font-family:var(--font)}
+.flow .fedge{stroke:var(--line-strong);stroke-width:2.4;fill:none}
+.flow .felabel{fill:var(--ink-soft);font-size:12px;font-weight:700;font-family:var(--font)}
+.flow .dark-label{fill:#241f33}
+.fc-detail{margin-top:12px;border:2px dashed var(--line-strong);border-radius:var(--r);padding:12px 14px;background:var(--surface-2);min-height:56px;font-size:.92rem;color:var(--ink-soft)}
+.fc-detail b{color:var(--ink)}
+.fc-hint{font-size:.8rem;color:var(--ink-faint)}
+
+/* ---------- interactive demo shell ---------- */
+.demo{background:var(--surface);border:2px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden}
+.demo .demo-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;background:color-mix(in srgb,var(--accent) 14%,var(--surface));border-bottom:2px solid var(--line);flex-wrap:wrap}
+.demo .demo-head b{font-size:.98rem}
+.demo .demo-body{padding:14px}
+.demo canvas{width:100%;height:auto;display:block;border-radius:var(--r);background:var(--surface-2);border:2px solid var(--line);touch-action:none;cursor:crosshair}
+.demo .ctrls{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.demo label{font-weight:800;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--ink-soft)}
+.demo input[type=range]{accent-color:var(--accent,var(--brand));width:130px}
+.demo .readout{font-family:var(--mono);font-size:.82rem;background:var(--surface-2);border:2px solid var(--line);border-radius:10px;padding:6px 10px}
+.demo .hint{font-size:.8rem;color:var(--ink-faint);margin-top:8px}
+.seg{display:inline-flex;border:2px solid var(--line-strong);border-radius:12px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:7px 13px;font-weight:800;cursor:pointer;font-family:inherit;color:var(--ink-soft);font-size:.84rem}
+.seg button.on{background:var(--accent,var(--brand));color:#fff}
+
+/* ---------- quiz ---------- */
+.q{border:2px solid var(--line);border-radius:var(--r);padding:16px;background:var(--surface);margin-bottom:14px}
+.q .qtag{font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--accent,var(--brand))}
+.q .qtext{font-weight:800;margin:4px 0 12px;font-size:1.02rem}
+.opts{display:grid;gap:9px}
+.opt{
+  text-align:left;border:2px solid var(--line);background:var(--surface-2);border-radius:12px;padding:11px 14px;
+  cursor:pointer;font-family:inherit;font-weight:700;font-size:.95rem;color:var(--ink);transition:transform .12s,border-color .12s,background .12s;
+  display:flex;gap:10px;align-items:center;
+}
+.opt:hover{border-color:var(--accent);transform:translateX(3px)}
+.opt .k{width:26px;height:26px;flex:0 0 26px;border-radius:8px;background:var(--line);display:grid;place-items:center;font-size:.82rem}
+.opt.correct{border-color:var(--good);background:color-mix(in srgb,var(--good) 16%,var(--surface));}
+.opt.correct .k{background:var(--good);color:#fff}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--surface));}
+.opt.wrong .k{background:var(--bad);color:#fff}
+.opt[disabled]{cursor:default}
+.opt[disabled]:hover{transform:none}
+.fibinput{border:2px solid var(--line-strong);border-radius:12px;padding:11px 14px;font-family:inherit;font-size:1rem;font-weight:700;background:var(--surface-2);color:var(--ink);width:min(320px,100%)}
+.explain{margin-top:10px;border-left:5px solid var(--accent,var(--brand));background:var(--surface-2);padding:10px 14px;border-radius:0 var(--r) var(--r) 0;font-size:.9rem;color:var(--ink-soft);display:none}
+.explain.show{display:block;animation:fade .3s}
+.explain b{color:var(--ink)}
+.quiz-foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px}
+
+/* ---------- flashcards ---------- */
+.flashgrid{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:620px){.flashgrid{grid-template-columns:1fr 1fr}}
+.flash{perspective:1000px;height:150px;cursor:pointer;background:none;border:0;padding:0;font-family:inherit}
+.flash .inner{position:relative;width:100%;height:100%;transition:transform .55s var(--ease);transform-style:preserve-3d}
+.flash.flipped .inner{transform:rotateY(180deg)}
+.flash .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:var(--r-lg);border:2px solid var(--line-strong);padding:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;box-shadow:var(--shadow)}
+.flash .front{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 16%,var(--surface)),var(--surface))}
+.flash .back{background:var(--surface-2);transform:rotateY(180deg);font-size:.9rem;color:var(--ink-soft)}
+.flash .front b{font-size:1.1rem}
+.flash .flip-tag{position:absolute;bottom:8px;font-size:.68rem;color:var(--ink-faint);font-weight:800;letter-spacing:.05em}
+
+/* ---------- drag & drop ---------- */
+.dnd-slots{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.dnd-slot{display:flex;gap:10px;align-items:center;border:2px dashed var(--line-strong);border-radius:12px;padding:8px 12px;background:var(--surface-2);min-height:52px}
+.dnd-slot .idx{width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:var(--accent,var(--brand));color:#fff;display:grid;place-items:center;font-weight:900;font-size:.82rem}
+.dnd-slot.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+.dnd-slot.ok{border-style:solid;border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,var(--surface))}
+.dnd-slot.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--surface))}
+.dnd-pool{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.dnd-chip{border:2px solid var(--line-strong);background:var(--surface);border-radius:12px;padding:9px 14px;font-weight:800;cursor:grab;box-shadow:0 2px 0 var(--line-strong);font-size:.9rem;user-select:none}
+.dnd-chip:active{cursor:grabbing}
+.dnd-chip.dragging{opacity:.4}
+.dnd-chip.placed{background:color-mix(in srgb,var(--accent) 14%,var(--surface))}
+.dnd-match{display:grid;gap:10px}
+.dnd-mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center}
+.dnd-mrow .termbox{border:2px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2);font-weight:800;font-size:.9rem}
+.dnd-drop{border:2px dashed var(--line-strong);border-radius:12px;padding:8px 12px;min-height:46px;background:var(--surface-2);display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--ink-faint)}
+
+/* ---------- dashboard ---------- */
+.statgrid{display:grid;gap:14px;grid-template-columns:repeat(2,1fr)}
+@media(min-width:720px){.statgrid{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--surface);border:2px solid var(--line);border-radius:var(--r);padding:14px;text-align:center;box-shadow:var(--shadow)}
+.stat .big{font-size:1.7rem;font-weight:900;font-variant-numeric:tabular-nums}
+.stat .lbl{font-size:.78rem;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em}
+.chartbox{background:var(--surface);border:2px solid var(--line);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow)}
+.chartbox h3{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.badges{display:flex;flex-wrap:wrap;gap:12px}
+.badge{width:118px;text-align:center;border:2px solid var(--line);border-radius:var(--r);padding:12px 8px;background:var(--surface);box-shadow:var(--shadow)}
+.badge.locked{filter:grayscale(1);opacity:.5}
+.badge .bem{font-size:1.9rem}
+.badge .bn{font-size:.76rem;font-weight:900;margin-top:4px;line-height:1.25}
+.badge .bd{font-size:.68rem;color:var(--ink-faint)}
+.weaklist{display:flex;flex-wrap:wrap;gap:8px}
+.weak{background:color-mix(in srgb,var(--warn) 18%,var(--surface));border:2px solid var(--warn);border-radius:999px;padding:5px 12px;font-weight:800;font-size:.82rem}
+
+/* ---------- toast / modal ---------- */
+.toast-wrap{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none}
+.toast{background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:14px;font-weight:800;box-shadow:var(--shadow-pop);animation:pop .3s var(--ease);max-width:90vw}
+.toast.good{background:var(--good);color:#fff}
+.toast.bad{background:var(--bad);color:#fff}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+.modal-back{position:fixed;inset:0;background:rgba(20,12,30,.55);z-index:150;display:none;place-items:center;padding:18px;backdrop-filter:blur(3px)}
+.modal-back.show{display:grid;animation:fade .25s}
+.modal{background:var(--surface);border:3px solid var(--line-strong);border-radius:var(--r-xl);max-width:520px;width:100%;padding:26px;text-align:center;box-shadow:var(--shadow-pop);animation:pop .35s var(--ease)}
+.modal .mem{font-size:3.4rem;line-height:1}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:190}
+
+/* ---------- misc ---------- */
+.foot{margin:40px 0 30px;text-align:center;color:var(--ink-faint);font-size:.82rem}
+.tabbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.note{background:color-mix(in srgb,var(--warn) 12%,var(--surface));border:2px solid var(--warn);border-radius:var(--r);padding:12px 14px;font-size:.88rem;color:var(--ink-soft)}
+.note b{color:var(--ink)}
+.divider{height:2px;background:var(--line);border-radius:2px;margin:22px 0}
+.badge-earn{display:inline-flex;gap:8px;align-items:center;background:color-mix(in srgb,var(--cboss) 20%,var(--surface));border:2px solid var(--cboss);border-radius:999px;padding:6px 14px;font-weight:900;font-size:.85rem}
+/* ---- compact HUD on small screens ---- */
+@media (max-width:620px){
+  .hud .wrap{gap:7px;padding-top:8px;padding-bottom:8px}
+  .logo{font-size:.92rem;gap:6px}
+  .logo .gem{font-size:1.15rem}
+  .chip{padding:4px 9px;font-size:.75rem;gap:4px}
+  .iconbtn{width:34px;height:34px;border-radius:10px;font-size:.92rem}
+  .hud-stats{gap:6px}
+  .xpwrap{min-width:82px}
+  .xpbar-label{font-size:.66rem;margin-bottom:1px}
+  .xpbar{height:8px}
+  .hero{padding:24px 14px}
+  .figure{padding:12px}
+  .card{padding:15px}
+}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+
+</style>
+</head>
+<body>
+
+<!-- ===================== TOP BAR (HUD) ===================== -->
+<header class="hud">
+  <div class="wrap">
+    <button id="logo" class="logo" aria-label="Go to level map"><span class="gem">🧠</span> ML&nbsp;Quest</button>
+    <nav class="hud-stats" aria-label="Progress">
+      <span class="chip" title="Player level">🎚️ Lv <b id="hud-level">1</b></span>
+      <span class="chip" id="hud-heart-box" title="Hearts — you lose one for a wrong answer">❤️ <b id="hud-hearts">5</b></span>
+      <span class="chip" title="Daily streak">🔥 <b id="hud-streak">0</b></span>
+      <span class="xpwrap">
+        <span class="xpbar-label">XP <b id="hud-xp">0</b></span>
+        <span class="xpbar"><i id="hud-xpbar"></i></span>
+      </span>
+      <button id="nav-map"  class="iconbtn" title="Level map"  aria-label="Level map">🗺️</button>
+      <button id="nav-dash" class="iconbtn" title="Dashboard"  aria-label="Dashboard">📊</button>
+      <button id="nav-boss" class="iconbtn" title="Boss level" aria-label="Boss level">👑</button>
+      <button id="theme-btn" class="iconbtn" aria-label="Toggle theme">🌙</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ===================== HOME / LEVEL MAP ===================== -->
+  <section id="view-home" class="view active">
+    <div class="wrap">
+      <div class="hero">
+        <div class="kicker">Learn machine learning</div>
+        <h1>Machine Learning Quest</h1>
+        <p>Ten levels and a boss fight, built entirely from the two lecture decks — “The Basics of AI and Machine Learning” and “Machine Learning” by Payal Gupta. Every level has an explanation, a clickable flowchart, hand-drawn diagrams, a live demo, flashcards, a drag-and-drop challenge and a quiz. Finish a level to unlock the next.</p>
+        <div class="row" style="justify-content:center">
+          <span class="chip">10 levels</span>
+          <span class="chip">👑 Boss level</span>
+          <span class="chip">🎮 4 live demos</span>
+          <span class="chip">🃏 Flashcards</span>
+          <span class="chip">🏆 12 badges</span>
+        </div>
+      </div>
+      <div class="spread" style="margin-top:8px">
+        <h2 style="margin:0">🗺️ Level map</h2>
+        <span id="map-progress" class="chip">0 / 10 levels complete</span>
+      </div>
+      <div class="map"><div id="map-grid" class="map-grid"></div></div>
+      <p class="note"><b>How it works.</b> Levels unlock in order. Answer quiz questions to earn XP (10 per correct answer, 25 for finishing a level); a wrong answer costs a heart. Your progress, XP, streak and badges are saved in this browser, so you can close the tab and come back later.</p>
+    </div>
+  </section>
+
+  <!-- ===================== LEVEL ===================== -->
+  <section id="view-level" class="view">
+    <div class="wrap"><div id="level-body"></div></div>
+  </section>
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <section id="view-dashboard" class="view">
+    <div class="wrap">
+      <h1 style="margin-top:18px">📊 Your progress dashboard</h1>
+      <div id="dash-body" class="stack"></div>
+    </div>
+  </section>
+
+  <!-- ===================== BOSS ===================== -->
+  <section id="view-boss" class="view">
+    <div class="wrap"><div id="boss-body"></div></div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Machine Learning Quest</b> — a study companion built from two decks by Payal Gupta: <em>The Basics of Artificial Intelligence and Machine Learning</em> and <em>Machine Learning</em>. Every fact, definition, flowchart and diagram on this page is drawn from those slides; nothing has been added from outside them.</p>
+    <p>Works offline · no data leaves your browser · edit the content in the LEVELS section of the script.</p>
+  </div>
+</footer>
+
+<div id="toasts" class="toast-wrap" aria-live="polite"></div>
+<div id="modal" class="modal-back" role="dialog" aria-modal="true"></div>
+
+<script>
+/* =========================================================================
+   CONTENT — LEVELS 1-5
+   Every fact here comes from the two source decks:
+     ML1 = "The Basics of Artificial Intelligence and Machine Learning" (Payal Gupta)
+     ML2 = "Machine Learning" (Payal Gupta)
+   Nothing is invented. To edit lessons, quizzes, flashcards or flowcharts,
+   just change the values below — the engine reads this structure directly.
+   -------------------------------------------------------------------------
+   Schema per level:
+     id, icon, title, blurb, accent  -> map + header
+     explanation : [paragraph strings]
+     analogies   : [{t: "title", d: "text"}]
+     terms       : [{t: "term", d: "definition"}]      -> key-terms list + flashcards source
+     flow        : {title, cap, h, nodes:[...], edges:[...]}   -> clickable SVG flowchart
+     diagrams    : [{kind, title, cap, ...}]           -> hand-drawn SVG diagrams
+     interactive : {kind, title, cap, hint} | null     -> canvas demo
+     quiz        : [{type:"mc"|"tf"|"fib", q, opts?, ans, explain}]
+     flashcards  : [{front, back}]
+     dnd         : {kind:"order"|"match", title, prompt, items?/pairs?}
+   ========================================================================= */
+
+const LEVELS = [
+
+/* ------------------------------------------------------------------ L1 --- */
+{
+  id: 1, icon: "🤖", accent: "--c1",
+  title: "What is AI, ML & Deep Learning?",
+  blurb: "The family tree: Data Science, Artificial Intelligence, Machine Learning and Deep Learning.",
+  explanation: [
+    "Before anything else, get the vocabulary straight — these four terms are nested inside one another, not interchangeable. <strong>Data science</strong> is the field that organises and analyses large datasets to extract valuable insights. <strong>Artificial intelligence (AI)</strong> is the capability of machines to perform tasks that typically require human intelligence — learning, reasoning, problem-solving and perception. <strong>Machine learning (ML)</strong> is a subfield of AI that focuses on enabling computers to learn and improve from data, without being explicitly programmed. <strong>Deep learning</strong> is a powerful subset of ML that uses artificial neural networks with multiple layers to analyse data and solve complex problems.",
+    "AI is usually split into three levels of ambition. <strong>Narrow AI</strong> performs a single specific task better than a human — and, importantly, all currently deployed AI tools are only narrow AI. <strong>General AI</strong> could perform any intellectual task with the same accuracy as a human. <strong>Strong AI</strong> would outperform humans in many tasks.",
+    "There is also a cultural quirk worth knowing. The <strong>\"AI Effect\"</strong> (and Tesler's theorem) says: AI is whatever hasn't been done yet. Once a trick is solved — optical character recognition, voice recognition, automated pap-smear or blood-smear readers, bioinformatics pipelines — we stop calling it AI.",
+    "Finally, how AI relates to people. <strong>Autonomous intelligence</strong> is AI making the decisions, with no human in the loop. <strong>Augmented intelligence</strong> uses AI to augment or assist humans; a human stays in the loop and ultimately makes the decision."
+  ],
+  analogies: [
+    { t: "The nested dolls", d: "Think of Russian dolls. Data science is the outer field; AI sits inside it, machine learning inside AI, and deep learning deepest of all. Opening a smaller doll never changes what the bigger one is." },
+    { t: "The AI Effect is like a magic trick", d: "A trick amazes us until we learn how it works — then it is \"just\" a trick. Chess engines, speech-to-text and OCR once counted as AI; today they are ordinary software." }
+  ],
+  terms: [
+    { t: "Data science", d: "Field that organises and analyses large datasets to extract valuable insights." },
+    { t: "Artificial intelligence (AI)", d: "Capability of machines to perform tasks that typically require human intelligence: learning, reasoning, problem-solving, perception." },
+    { t: "Machine learning (ML)", d: "A subfield of AI that enables computers to learn and improve from data without being explicitly programmed." },
+    { t: "Deep learning", d: "A subset of ML using artificial neural networks with multiple layers to solve complex problems." },
+    { t: "Narrow AI", d: "The machine performs a single specific task better than a human. All currently deployed AI is narrow AI." },
+    { t: "General AI", d: "The machine can perform any intellectual task with the same accuracy as a human." },
+    { t: "Strong AI", d: "The machine outperforms humans in many tasks." },
+    { t: "AI Effect / Tesler's theorem", d: "AI is whatever hasn't been done yet — solved tasks stop being called AI." },
+    { t: "Autonomous intelligence", d: "AI is making the decisions; no human-in-the-loop." },
+    { t: "Augmented intelligence", d: "AI augments or assists humans; a human stays in the loop and makes the final decision." }
+  ],
+  flow: {
+    title: "Flowchart — the three levels of AI",
+    cap: "Click any node to see what it means.",
+    h: 250,
+    nodes: [
+      { id:"ai", x:300, y:16, w:160, h:52, shape:"round", c:"--c1", label:"Artificial\nIntelligence", desc:"<b>Artificial intelligence (AI)</b> is the capability of machines to perform tasks that typically require human intelligence — learning, reasoning, problem-solving and perception." },
+      { id:"narrow", x:16, y:150, w:220, h:66, shape:"rect", c:"--c1", label:"Narrow AI", desc:"<b>Narrow AI</b> — the machine performs a single specific task better than a human. Every AI tool deployed today is narrow AI." },
+      { id:"general", x:270, y:150, w:220, h:66, shape:"rect", c:"--c1", label:"General AI", desc:"<b>General AI</b> — the machine can perform any intellectual task with the same accuracy as a human." },
+      { id:"strong", x:524, y:150, w:220, h:66, shape:"rect", c:"--c1", label:"Strong AI", desc:"<b>Strong AI</b> — the machine outperforms humans in many tasks." }
+    ],
+    edges: [
+      { a:"ai", b:"narrow" }, { a:"ai", b:"general" }, { a:"ai", b:"strong" }
+    ]
+  },
+  diagrams: [
+    { kind:"nested", title:"Diagram — the ML family tree",
+      cap:"Each ring sits inside the one outside it. (Recreated from ML1.)",
+      items:[
+        { label:"Data science", sub:"organise & analyse large datasets for insight" },
+        { label:"Artificial intelligence", sub:"machines doing tasks that need human intelligence" },
+        { label:"Machine learning", sub:"learn from data, not explicit programming" },
+        { label:"Deep learning", sub:"neural networks with multiple layers" }
+      ]
+    }
+  ],
+  interactive: null,
+  quiz: [
+    { type:"mc", q:"Deep learning is best described as a subset of which field?",
+      opts:["Data science","Artificial intelligence","Machine learning","Statistics"], ans:2,
+      explain:"Deep learning is a subset of <b>machine learning</b>, which uses artificial neural networks with multiple layers." },
+    { type:"mc", q:"According to the deck, what kind of AI are all currently deployed AI tools?",
+      opts:["General AI","Strong AI","Narrow AI","Superintelligence"], ans:2,
+      explain:"All currently deployed AI tools are <b>narrow AI</b> — they perform a single specific task well." },
+    { type:"tf", q:"Machine learning is a subfield of artificial intelligence.",
+      ans:true, explain:"True — ML is a subfield of AI that focuses on learning from data without explicit programming." },
+    { type:"fib", q:"The capability of machines to perform tasks that typically require human intelligence is called ______.",
+      ans:["artificial intelligence","ai"], explain:"That is the deck's definition of <b>artificial intelligence (AI)</b>." },
+    { type:"mc", q:"Which of these keeps a human in the loop, with the human ultimately making the decision?",
+      opts:["Autonomous intelligence","Augmented intelligence","Strong AI","The AI effect"], ans:1,
+      explain:"<b>Augmented intelligence</b> augments or assists humans and maintains the human-in-the-loop." },
+    { type:"tf", q:"Optical character recognition and voice recognition are still widely counted as AI today.",
+      ans:false, explain:"False — by the <b>AI Effect</b>, once solved they are no longer considered AI." }
+  ],
+  flashcards: [
+    { front:"AI", back:"Capability of machines to perform tasks that typically require human intelligence." },
+    { front:"Machine learning", back:"Subfield of AI: computers learn and improve from data without being explicitly programmed." },
+    { front:"Deep learning", back:"Subset of ML using neural networks with multiple layers." },
+    { front:"Narrow / General / Strong AI", back:"Single task better than human → human-level on any task → outperforms humans in many tasks." },
+    { front:"AI Effect", back:"AI is whatever hasn't been done yet — solved tasks stop being called AI." }
+  ],
+  dnd: { kind:"order", title:"Order the rings, biggest to smallest",
+    prompt:"Drag the four fields into order, from the outermost (broadest) ring to the innermost.",
+    items:["Data science","Artificial intelligence","Machine learning","Deep learning"] }
+},
+
+/* ------------------------------------------------------------------ L2 --- */
+{
+  id: 2, icon: "⚙️", accent: "--c2",
+  title: "ML vs Traditional Programming",
+  blurb: "Where the rules come from, how ML differs from traditional statistics, and why it can be a black box.",
+  explanation: [
+    "The clearest way to understand ML is to compare it with ordinary programming. In <strong>traditional programming</strong> you feed in the input data and the human-specified rules, and run the program to get the output. In <strong>machine learning</strong> you feed in the input and the output data, and the machine creates its own rules during training — rules that are then evaluated while testing. The human does not have to write code or even know the patterns for the analysis to develop the algorithm.",
+    "ML also differs from <strong>traditional statistics</strong> in several ways. Traditional statistics defines an explicit mathematical relationship between inputs and outputs and makes assumptions about the data's characteristics and distribution; ML usually does not. Traditional statistics is not usually suited to large numbers of input variables or complex multifactorial data; ML is. And traditional statistics can explain the reason for its output; ML often cannot — the <strong>black-box problem</strong>.",
+    "Why bother? The decks list uses and benefits such as <strong>prediction</strong> (e.g. lurking diagnoses from laboratory results), <strong>decision support and signal conversion</strong> (natural-language processing, voice recognition), <strong>classification</strong> (pattern and feature detection), and <strong>anomaly detection</strong> (unexpected laboratory results, monitoring for shifts and trends). In bioinformatics, ML analyses genomics and proteomics data, detects subtle patterns in genetic sequences, predicts disease risk and drug response, accelerates drug discovery and supports precision medicine.",
+    "But there are real <strong>challenges</strong>: cybersecurity and software risks (hacking, bad data, automation bias); data issues (incomplete, inconsistent or biased data, missing inputs, under-represented groups); model fragility (brittle models, adversarial attacks, performance degradation); transparency and trust (black-box systems, limited explainability, no audit trails); ethical concerns (bias amplification, unclear accountability); and the need for human oversight. Guidelines have followed — for example the US/Canada/UK <em>Good Machine Learning Practice</em> guiding principles for medical-device development (Oct 2021), plus ethics guidance from the WHO, UNESCO and the EU."
+  ],
+  analogies: [
+    { t: "Recipe vs chef", d: "Traditional programming hands the computer a recipe (the rules) and the ingredients (data). Machine learning hands it the ingredients and photos of finished dishes, and lets it reverse-engineer the recipe." },
+    { t: "The black box", d: "A model can be a brilliant but silent expert: it gives the right answer without being able to explain why. That is fine until you must justify a decision." }
+  ],
+  terms: [
+    { t: "Traditional programming", d: "Input data + human-specified rules → output." },
+    { t: "Machine learning", d: "Input + output data → computer-specified rules (the model)." },
+    { t: "Black-box problem", d: "ML models often cannot explain the reason for their output." },
+    { t: "Anomaly detection", d: "Spotting unexpected results or shifts and trends — a listed use of ML." },
+    { t: "Model fragility", d: "Brittle models that degrade or can be attacked (adversarial attacks)." },
+    { t: "Human-in-the-loop", d: "Human oversight to preserve safety and ethics in AI systems." }
+  ],
+  flow: {
+    title: "Flowchart — two ways to build a program",
+    cap: "Click a step to expand it.",
+    h: 300,
+    nodes: [
+      { id:"lblA", x:16, y:8, w:360, h:26, shape:"label", label:"TRADITIONAL PROGRAMMING", desc:"<b>Traditional programming:</b> the human writes the rules." },
+      { id:"a0", x:16, y:44, w:170, h:56, shape:"rect", c:"--c2", label:"Input data", desc:"Raw inputs fed to the program." },
+      { id:"a1", x:210, y:44, w:190, h:56, shape:"rect", c:"--c2", label:"Human-specified rules", desc:"A person writes the rules that analyse the data according to known or suspected patterns." },
+      { id:"a2", x:424, y:44, w:150, h:56, shape:"rect", c:"--c2", label:"Output", desc:"The program runs the rules on the data and produces the output." },
+      { id:"lblB", x:16, y:158, w:360, h:26, shape:"label", label:"MACHINE LEARNING", desc:"<b>Machine learning:</b> the machine writes the rules." },
+      { id:"b0", x:16, y:194, w:170, h:56, shape:"rect", c:"--c2", label:"Input + Output data", desc:"Both the features and the known answers (labels) are supplied." },
+      { id:"b1", x:210, y:194, w:190, h:56, shape:"rect", c:"--c2", label:"Computer-specified rules", desc:"During training the machine creates its own rules — the model." },
+      { id:"b2", x:424, y:194, w:150, h:56, shape:"rect", c:"--c2", label:"Predictions", desc:"The learned model maps new data to a predicted output." }
+    ],
+    edges: [ {a:"a0",b:"a1"}, {a:"a1",b:"a2"}, {a:"b0",b:"b1"}, {a:"b1",b:"b2"} ]
+  },
+  diagrams: [
+    { kind:"table", title:"Diagram — traditional statistics vs machine learning",
+      cap:"Recreated from ML1. 'Yes' / 'Not usually' as stated in the deck.",
+      head:["Function","Traditional statistics","Machine learning"],
+      rows:[
+        ["Defines explicit mathematical relationship between inputs and outputs","Yes","Not usually"],
+        ["Makes assumptions about data characteristics & distribution","Yes","Not usually"],
+        ["Handles large numbers of input variables","Not usually","Yes"],
+        ["Can use complex multifactorial data","Not usually","Yes"],
+        ["Reason for output is clear and explainable","Yes","Not usually (black box)"]
+      ] }
+  ],
+  interactive: null,
+  quiz: [
+    { type:"mc", q:"In traditional programming, who specifies the rules that analyse the data?",
+      opts:["The computer, during training","A human","Nobody — they emerge","The data itself"], ans:1,
+      explain:"In traditional programming the rules are <b>human-specified</b>; in ML the machine creates its own rules." },
+    { type:"tf", q:"A machine-learning model usually gives a clear, explainable reason for its output.",
+      ans:false, explain:"False — this is the <b>black-box problem</b>; ML is 'not usually' explainable." },
+    { type:"mc", q:"Compared with machine learning, traditional statistics is…",
+      opts:["Better at large numbers of variables","More likely to assume a data distribution","Unable to explain its output","Built for complex multifactorial data"], ans:1,
+      explain:"Traditional statistics makes assumptions about the characteristics and distribution of the data; ML 'not usually' does." },
+    { type:"fib", q:"The difficulty that a model cannot explain the reason for its output is called the ______ problem.",
+      ans:["black box","black-box","blackbox"], explain:"That is the <b>black-box problem</b>." },
+    { type:"mc", q:"Which of these is listed as a challenge of AI/ML?",
+      opts:["Too much explainability","Automation bias and biased data","Models being too simple to train","No need for oversight"], ans:1,
+      explain:"Challenges include cybersecurity/software risks (e.g. automation bias), data issues, model fragility, transparency, ethics and the need for human oversight." }
+  ],
+  flashcards: [
+    { front:"Traditional programming", back:"Input data + human-specified rules → output." },
+    { front:"Machine learning", back:"Input + output data → computer-specified rules (the model)." },
+    { front:"Black-box problem", back:"The model cannot explain the reason for its output." },
+    { front:"Good ML practice (US/Canada/UK, Oct 2021)", back:"Guiding principles incl. representative data, independent training & test data, human in the loop, real-world monitoring." }
+  ],
+  dnd: { kind:"order", title:"Order the machine-learning recipe",
+    prompt:"In ML, put the three ingredients into the order the deck describes.",
+    items:["Input data","Output data","Machine creates its own rules (the model)"] }
+},
+
+/* ------------------------------------------------------------------ L3 --- */
+{
+  id: 3, icon: "🎓", accent: "--c3",
+  title: "Types of Learning",
+  blurb: "Supervised, unsupervised, reinforcement and transfer learning — and the many shades of supervision.",
+  explanation: [
+    "<strong>Supervised learning</strong> trains on classified and/or labelled data. The goal is to train a model to generate known answers, patterns or relationships. It comes in shades: <strong>fully supervised</strong> (all data labelled to the same degree of detail), <strong>semi-supervised</strong> (some data labelled, some not — the unlabelled data may be auto-labelled to match patterns in the labelled data) and <strong>weakly supervised</strong> (a small amount of data has detailed labels, the rest have fewer).",
+    "<strong>Unsupervised learning</strong> uses data that have not been classified or labelled. The goal is for the model to discover new, previously unknown patterns or relationships.",
+    "<strong>Reinforcement learning</strong> is used to learn how to reach a complex goal. The deck's examples are game playing (IBM Watson and Jeopardy), speech to text and financial trading. It works as a loop: the agent perceives the state of the environment, executes an action based on that state, the environment gives a reward or penalty to the agent, and the environment moves to a new state.",
+    "<strong>Transfer learning</strong> reuses, and often fine-tunes, a model trained on one task for a related task. The training data are transferred from a different, related domain — for example, using natural images from ImageNet to train a model for medical images. Coarse training is done on the transferred data, then fine-tune training uses a smaller dataset directly related to the domain of use. The reasons are practical: data are expensive, and higher-quality, higher-quantity data may be more available and cheaper in another domain."
+  ],
+  analogies: [
+    { t: "Teacher, no teacher, homework", d: "The deck's own analogy: supervised learning is a student supervised by a teacher at home and school; unsupervised learning is a student figuring out a concept alone; semi-supervised is a teacher covering a few concepts in class and setting homework on similar ideas." },
+    { t: "Training a puppy", d: "Reinforcement learning is a puppy: it acts, and the environment gives a treat (reward) or a 'no' (penalty), then the situation changes again." },
+    { t: "Standing on shoulders", d: "Transfer learning is starting a new job where you already know a similar tool — you do not relearn from zero, you just fine-tune." }
+  ],
+  terms: [
+    { t: "Supervised learning", d: "Trains on labelled/classified data to reproduce known answers, patterns or relationships." },
+    { t: "Fully supervised", d: "All data labelled to the same degree of detail." },
+    { t: "Semi-supervised", d: "Some data labelled, some not; unlabelled data may be auto-labelled to match patterns." },
+    { t: "Weakly supervised", d: "A small amount of data has detailed labels; the rest have fewer labels." },
+    { t: "Unsupervised learning", d: "Unlabelled data; the model discovers new patterns or relationships." },
+    { t: "Reinforcement learning", d: "Learn to reach a complex goal via agent–action–reward–new state loops." },
+    { t: "Transfer learning", d: "Reuse/fine-tune a model trained on one task for a related task." },
+    { t: "Fine-tuning", d: "Final training with smaller data directly related to the domain of use." }
+  ],
+  flow: {
+    title: "Flowchart — the reinforcement-learning loop",
+    cap: "Click each stage of the loop.",
+    h: 300,
+    nodes: [
+      { id:"n0", x:250, y:10, w:260, h:58, shape:"rect", c:"--c3", label:"Agent perceives state\nof Environment", desc:"The agent observes the current <b>state</b> of its environment." },
+      { id:"n1", x:566, y:110, w:180, h:74, shape:"rect", c:"--c3", label:"Agent executes\naction", desc:"Based on the state, the agent chooses and executes an <b>action</b>." },
+      { id:"n2", x:250, y:216, w:260, h:58, shape:"rect", c:"--c3", label:"Environment gives\nreward or penalty", desc:"The environment returns a <b>reward or penalty</b> to the agent." },
+      { id:"n3", x:14, y:110, w:180, h:74, shape:"rect", c:"--c3", label:"Environment has\nnew state", desc:"The environment transitions to a <b>new state</b>, and the loop repeats." }
+    ],
+    edges: [ {a:"n0",b:"n1"}, {a:"n1",b:"n2"}, {a:"n2",b:"n3"}, {a:"n3",b:"n0",label:"repeat"} ]
+  },
+  diagrams: [
+    { kind:"panels", title:"Diagram — supervised vs unsupervised vs semi-supervised",
+      cap:"Filled dots are labelled; hollow dots are unlabelled. (From ML1 and ML2.)",
+      items:[
+        { label:"Supervised", note:"Labelled data", filled:5, hollow:0 },
+        { label:"Semi-supervised", note:"A few labelled, many unlabelled", filled:2, hollow:5 },
+        { label:"Unsupervised", note:"Unlabelled data", filled:0, hollow:7 }
+      ] }
+  ],
+  interactive: null,
+  quiz: [
+    { type:"mc", q:"Which type of learning uses data that are neither classified nor labelled?",
+      opts:["Supervised","Unsupervised","Reinforcement","Transfer"], ans:1,
+      explain:"<b>Unsupervised learning</b> uses unlabelled data and lets the model discover new patterns." },
+    { type:"tf", q:"In semi-supervised learning, all data are labelled to the same degree of detail.",
+      ans:false, explain:"False — that describes <b>fully supervised</b>. Semi-supervised has some data labelled and some not." },
+    { type:"fib", q:"Reusing and fine-tuning a model trained on one task for a related task is called ______ learning.",
+      ans:["transfer"], explain:"That is <b>transfer learning</b> — e.g. using ImageNet images to train a model for medical images." },
+    { type:"mc", q:"Which is an example of reinforcement learning from the deck?",
+      opts:["Grouping customers by behaviour","Game playing (IBM Watson and Jeopardy)","Predicting house prices","Reading a spreadsheet"], ans:1,
+      explain:"The deck lists game playing, speech to text and financial trading as reinforcement-learning examples." },
+    { type:"mc", q:"In the reinforcement-learning loop, what does the environment give the agent after an action?",
+      opts:["A label","A reward or penalty","A new dataset","A feature vector"], ans:1,
+      explain:"The environment gives a <b>reward or penalty</b>, then moves to a new state." }
+  ],
+  flashcards: [
+    { front:"Supervised", back:"Labelled data → reproduce known answers/patterns." },
+    { front:"Unsupervised", back:"Unlabelled data → discover new patterns." },
+    { front:"Reinforcement", back:"Agent + environment loop with rewards/penalties to reach a goal." },
+    { front:"Transfer learning", back:"Reuse/fine-tune a model from a related domain, then fine-tune on domain-specific data." },
+    { front:"Semi-supervised", back:"A little labelled data + lots of unlabelled; unlabelled may be auto-labelled." }
+  ],
+  dnd: { kind:"match", title:"Match the learning type to its data",
+    prompt:"Drag each data description onto the learning type it belongs to.",
+    pairs:[
+      { left:"Supervised", right:"Labelled/classified data" },
+      { left:"Unsupervised", right:"Data not classified or labelled" },
+      { left:"Semi-supervised", right:"Some labelled, some unlabelled" },
+      { left:"Reinforcement", right:"Rewards and penalties from an environment" }
+    ] }
+},
+
+/* ------------------------------------------------------------------ L4 --- */
+{
+  id: 4, icon: "🧩", accent: "--c4",
+  title: "Data & Model Vocabulary",
+  blurb: "Instance, feature, label, outlier, algorithm, parameter, epoch — the words you will use constantly.",
+  explanation: [
+    "Everything a model learns from is data, and data has a precise vocabulary. An <strong>instance</strong> is a single observation of data (the number of instances required depends on the problem and the model). An <strong>outlier</strong> is an instance significantly different from the rest of the population — it can skew results, and different models have different sensitivities to outliers. A <strong>label</strong> is a meaningful tag or identifier assigned to a piece of data to give the model context to learn from. A <strong>feature</strong> is an aspect (variable) of the training data; in unsupervised learning a feature is called a <strong>dimension</strong>.",
+    "Then there is the machinery that learns. An <strong>algorithm</strong> is a repeatable process used to train a model from a given set of training data. A <strong>parameter</strong> is an internal value the model derives from the training data — for example weights and bias values. Put together: <strong>model = algorithm + parameters</strong>. When a model is used for classification it is called a <strong>classifier</strong>. A <strong>weak learner</strong> is a model whose performance is only slightly above random chance; a <strong>good model</strong> is one that generalises well — it performs the same on new data as it did on the training and test data.",
+    "One more unit of training: an <strong>epoch</strong>. One epoch equals one pass through the training data."
+  ],
+  analogies: [
+    { t: "A spreadsheet of fruit", d: "Each row is an instance (one fruit). Each column is a feature (colour, smell, taste). The label is the answer you want to predict — the fruit's name." },
+    { t: "Recipe vs the dish", d: "The algorithm is the recipe (a repeatable process); the parameters are the amounts you ended up with after cooking — and together they make the dish, the model." }
+  ],
+  terms: [
+    { t: "Instance", d: "A single observation of data." },
+    { t: "Outlier", d: "An instance significantly different from the rest; can skew results." },
+    { t: "Label", d: "A meaningful tag/identifier assigned to data so a model can learn from it." },
+    { t: "Feature", d: "An aspect (variable) of the training data; called a dimension in unsupervised learning." },
+    { t: "Algorithm", d: "A repeatable process used to train a model from training data." },
+    { t: "Parameter", d: "An internal value the model derives from training data, e.g. weights and bias." },
+    { t: "Model", d: "Model = algorithm + parameters." },
+    { t: "Classifier", d: "A model used for classification." },
+    { t: "Weak learner", d: "A model whose performance is only slightly better than random chance." },
+    { t: "Epoch", d: "One pass through the training data." }
+  ],
+  flow: {
+    title: "Flowchart — how a model is assembled",
+    cap: "Click a box to expand it.",
+    h: 380,
+    nodes: [
+      { id:"alg", x:30, y:30, w:250, h:76, shape:"rect", c:"--c4", label:"Algorithm\n(repeatable training process)", desc:"An <b>algorithm</b> is a repeatable process used to train a model from a given set of training data." },
+      { id:"par", x:440, y:30, w:250, h:76, shape:"rect", c:"--c4", label:"Parameters\n(weights, bias — derived from data)", desc:"A <b>parameter</b> is an internal value inside ML that the model derives based on the training data, e.g. weights and bias values." },
+      { id:"model", x:210, y:180, w:300, h:66, shape:"round", c:"--c4", label:"Model = algorithm + parameters", desc:"Combine the two and you have a <b>model</b> — a representation learned from data." },
+      { id:"clf", x:210, y:290, w:300, h:60, shape:"rect", c:"--c4", label:"Classifier (when used for classification)", desc:"When a model is used for classification, it is called a <b>classifier</b>." }
+    ],
+    edges: [ {a:"alg",b:"model"}, {a:"par",b:"model"}, {a:"model",b:"clf"} ]
+  },
+  diagrams: [
+    { kind:"table", title:"Diagram — instances and features",
+      cap:"Recreated from ML1. Rows are instances; columns are features.",
+      head:["","Feature 1","Feature 2","Feature 3"],
+      rows:[ ["Instance 1","Red","Slow","Yes"], ["Instance 2","Red","Fast","No"], ["Instance 3","Green","Medium","No"] ] }
+  ],
+  interactive: null,
+  quiz: [
+    { type:"fib", q:"A single observation of data is called an ______.",
+      ans:["instance"], explain:"An <b>instance</b> is a single observation of data." },
+    { type:"mc", q:"In unsupervised learning, a feature is also called a…",
+      opts:["Label","Dimension","Epoch","Classifier"], ans:1,
+      explain:"A feature is called a <b>dimension</b> in unsupervised learning." },
+    { type:"tf", q:"Model = algorithm + parameters.",
+      ans:true, explain:"True — the model is the algorithm together with the parameters it derived from the data." },
+    { type:"mc", q:"One epoch equals…",
+      opts:["One training example","One pass through the training data","One parameter update","One test run"], ans:1,
+      explain:"1 epoch = 1 pass through the training data." },
+    { type:"mc", q:"A model whose performance is only slightly better than random chance is a…",
+      opts:["Good model","Weak learner","Classifier","Strong learner"], ans:1,
+      explain:"That is a <b>weak learner</b> (weak model)." },
+    { type:"mc", q:"Which instance 'can skew results' because it differs significantly from the rest?",
+      opts:["A label","An outlier","A parameter","A feature"], ans:1,
+      explain:"An <b>outlier</b> is significantly different from other instances and can skew results." }
+  ],
+  flashcards: [
+    { front:"Instance", back:"A single observation of data." },
+    { front:"Feature", back:"An aspect/variable of the training data (a 'dimension' in unsupervised learning)." },
+    { front:"Label", back:"A meaningful tag assigned to data so the model can learn from it." },
+    { front:"Model = ?", back:"algorithm + parameters." },
+    { front:"Epoch", back:"One pass through the training data." },
+    { front:"Weak learner", back:"Performance only slightly above random chance." }
+  ],
+  dnd: { kind:"match", title:"Match the term to its meaning",
+    prompt:"Drag each definition onto the term it describes.",
+    pairs:[
+      { left:"Instance", right:"A single observation of data" },
+      { left:"Outlier", right:"An instance very different from the rest" },
+      { left:"Feature", right:"An aspect/variable of the training data" },
+      { left:"Epoch", right:"One pass through the training data" }
+    ] }
+},
+
+/* ------------------------------------------------------------------ L5 --- */
+{
+  id: 5, icon: "⚖️", accent: "--c5",
+  title: "Model Evaluation",
+  blurb: "Bias, variance, irreducible error, signal vs noise — and the great enemy: overfitting.",
+  explanation: [
+    "How do you know if a model is any good? Start with two measures. <strong>Bias</strong> is a measure of inaccuracy — not just an ethical term, but the amount of inaccuracy in the model's performance after training. High bias means the model is inaccurate (it <strong>underfits</strong>); low bias means it is accurate, but it may be overfit. <strong>Variance</strong> is a measure of imprecision (a lack of reproducibility), due to the model's sensitivity to small fluctuations in the training set. High variance means the model is imprecise and likely <strong>overfits</strong>; low variance means it is precise but may be inaccurate and underfit.",
+    "There is also <strong>irreducible error</strong> — noise that cannot be reduced by optimising algorithms. And two ideas underneath it all: <strong>signal</strong> is the true underlying pattern you are trying to learn from the data, and <strong>noise</strong> is irrelevant information or randomness in the dataset. Well-designed machine learning separates signal from noise.",
+    "These combine into the <strong>bias–variance trade-off</strong>: things that reduce variance increase bias, and things that reduce bias increase variance. The deck gives the relationship as <strong>total error = bias² + variance + irreducible error</strong>.",
+    "<strong>Goodness of fit</strong> is how closely a model's output values match the observed (true) values. <strong>Underfitting</strong> is when the model does not accurately predict the output for the data fed to it (high bias, low or high variance). <strong>Overfitting</strong> occurs when a statistical model exactly fits the training data but does not fit new data well — the training set has a low error rate while the test set has a high error rate, which is high variance. Overfitting is described as the most common problem for any statistical model using a training set."
+  ],
+  analogies: [
+    { t: "The exam-crammer", d: "Overfitting is a student who memorises past papers exactly. Perfect on those, lost on a new question. Underfitting is a student who barely studied at all and is wrong everywhere." },
+    { t: "Bullseye vs scatter", d: "Bias is how far your shots land from the bullseye; variance is how scattered they are. Low bias + low variance is a tight group on target — what you want." }
+  ],
+  terms: [
+    { t: "Bias", d: "Measure of inaccuracy — inaccuracy in the model's performance after training." },
+    { t: "Variance", d: "Measure of imprecision / lack of reproducibility, from sensitivity to the training set." },
+    { t: "Irreducible error", d: "Noise that cannot be reduced by optimising algorithms." },
+    { t: "Signal", d: "The true underlying pattern you are trying to learn from the data." },
+    { t: "Noise", d: "Irrelevant information or randomness in a dataset." },
+    { t: "Bias–variance trade-off", d: "Reducing variance increases bias and vice versa. Total error = bias² + variance + irreducible error." },
+    { t: "Goodness of fit", d: "How closely a model's outputs match the observed (true) values." },
+    { t: "Underfitting", d: "Model does not accurately predict output for the data fed to it (high bias)." },
+    { t: "Overfitting", d: "Exactly fits training data but not new data — low training error, high test error (high variance)." }
+  ],
+  flow: {
+    title: "Flowchart — the bias–variance trade-off",
+    cap: "Click any node to expand.",
+    h: 440,
+    nodes: [
+      { id:"bias", x:30, y:20, w:210, h:64, shape:"rect", c:"--c5", label:"Bias\n(measure of inaccuracy)", desc:"<b>Bias</b> is a measure of inaccuracy — the amount of inaccuracy in the model's performance after training." },
+      { id:"var", x:520, y:20, w:210, h:64, shape:"rect", c:"--c5", label:"Variance\n(measure of imprecision)", desc:"<b>Variance</b> is a measure of imprecision, due to the model's sensitivity to small fluctuations in the training set." },
+      { id:"trade", x:210, y:140, w:340, h:70, shape:"round", c:"--c5", label:"Bias–variance trade-off:\nreducing one raises the other", desc:"Things that reduce variance increase bias; things that reduce bias increase variance." },
+      { id:"under", x:30, y:270, w:250, h:58, shape:"rect", c:"--c5", label:"High bias → UNDERFIT", desc:"<b>Underfitting:</b> the model does not accurately predict output for the data fed to it." },
+      { id:"over", x:480, y:270, w:250, h:58, shape:"rect", c:"--c5", label:"High variance → OVERFIT", desc:"<b>Overfitting:</b> exactly fits training data but not new data — low training error, high test error." },
+      { id:"tot", x:180, y:364, w:400, h:56, shape:"rect", c:"--c5", label:"Total error = bias² + variance + irreducible error", desc:"The deck's stated relationship. <b>Irreducible error</b> is noise that cannot be reduced by optimising algorithms." }
+    ],
+    edges: [ {a:"bias",b:"trade"}, {a:"var",b:"trade"}, {a:"trade",b:"under"}, {a:"trade",b:"over"}, {a:"trade",b:"tot"} ]
+  },
+  diagrams: [
+    { kind:"curves", title:"Diagram — underfitting, good fit, overfitting",
+      cap:"Left: too simple (underfit). Middle: captures the signal. Right: chases the noise (overfit)." }
+  ],
+  interactive: { kind:"biasvar", title:"Interactive — underfitting vs overfitting",
+    cap:"Drag the complexity slider and watch the fit change. Train error always falls; test error falls then rises — the gap is overfitting.",
+    hint:"This is the bias–variance trade-off in action: low complexity → high bias (underfit); high complexity → high variance (overfit)." },
+  quiz: [
+    { type:"mc", q:"High bias generally means the model is…",
+      opts:["Inaccurate (underfit)","Precise but wrong","Exactly right","Overfit"], ans:0,
+      explain:"High bias → the model is inaccurate (underfit). Low bias → accurate, but may be overfit." },
+    { type:"mc", q:"High variance generally means the model is…",
+      opts:["Consistently accurate","Imprecise and likely overfit","Unaffected by the training set","Free of noise"], ans:1,
+      explain:"High variance → imprecise and likely overfit; the model is too sensitive to the training set." },
+    { type:"fib", q:"Total error = bias² + variance + ______ error.",
+      ans:["irreducible"], explain:"The deck gives: total error = bias² + variance + <b>irreducible error</b>." },
+    { type:"tf", q:"Overfitting shows a low training error rate but a high test error rate.",
+      ans:true, explain:"True — that pattern (low train error, high test error) is high variance, i.e. overfitting." },
+    { type:"mc", q:"The true underlying pattern you are trying to learn is called the…",
+      opts:["Noise","Signal","Variance","Outlier"], ans:1,
+      explain:"<b>Signal</b> is the true underlying pattern; noise is irrelevant information or randomness." },
+    { type:"tf", q:"Reducing variance tends to increase bias.",
+      ans:true, explain:"True — that is the bias–variance trade-off." }
+  ],
+  flashcards: [
+    { front:"Bias", back:"Measure of inaccuracy after training. High bias → underfit." },
+    { front:"Variance", back:"Measure of imprecision. High variance → overfit." },
+    { front:"Total error", back:"bias² + variance + irreducible error." },
+    { front:"Signal vs noise", back:"Signal = true pattern; noise = irrelevant randomness." },
+    { front:"Overfitting", back:"Fits training data exactly, performs poorly on new data." }
+  ],
+  dnd: { kind:"match", title:"Match the symptom to the diagnosis",
+    prompt:"Drag each symptom onto the correct diagnosis.",
+    pairs:[
+      { left:"High bias", right:"Underfitting — inaccurate" },
+      { left:"High variance", right:"Overfitting — imprecise" },
+      { left:"Irreducible error", right:"Noise that can't be optimised away" },
+      { left:"Signal", right:"The true underlying pattern" }
+    ] }
+}
+
+];
+
+/* =========================================================================
+   CONTENT — LEVELS 6-10  (+ the Boss Level)
+   Continues the LEVELS array started in content1.js.
+   All facts sourced from the two decks (ML1 = Basics of AI & ML,
+   ML2 = Machine Learning, both by Payal Gupta). Nothing invented.
+   ========================================================================= */
+
+LEVELS.push(
+
+/* ------------------------------------------------------------------ L6 --- */
+{
+  id: 6, icon: "🔄", accent: "--c6",
+  title: "The ML Pipeline",
+  blurb: "The full model-development process — from the problem to deployment — and how to pick a model.",
+  explanation: [
+    "A model is not built in one step. The decks describe a process: <strong>determine the problem to be answered</strong> → <strong>gather appropriate data</strong> → <strong>prep, clean and transform the data</strong> → <strong>partition the data</strong> into training, testing and (sometimes) validation sets → <strong>select features</strong> → <strong>select a model</strong> → <strong>select quality metrics</strong> → <strong>train</strong> the model on the training set → <strong>evaluate (validate)</strong> it on a validation set or by another method → if it needs further optimisation, <strong>optimise</strong> and loop back → otherwise <strong>test</strong> the final model on the test set → check whether it is ready for production → <strong>deploy</strong> it, put it at the site of deployment, perform local verification, and <strong>monitor</strong> its performance. If retraining is needed, the loop begins again.",
+    "Optimising a model can include adjusting <strong>hyperparameters</strong>, <strong>dimensionality reduction</strong> on the data, and <strong>regularisation</strong>. Evaluating a model on a validation set may not always be needed. And one pass through the training data is one <strong>epoch</strong>.",
+    "Naming can confuse, because phases have variable names between authors (e.g. learning phase, inference phase). The deck gives a helpful warning: in <strong>machine learning</strong>, 'validation' means evaluating a preliminary (non-final) model whose results lead to tweaking, and 'testing' means the final evaluation where no further changes are expected. In a <strong>hospital laboratory</strong>, the meanings are reversed — 'validation' is the final evaluation and 'testing' is preliminary or live clinical testing.",
+    "Once you know whether the data has known outputs, you can choose a family of methods. The <strong>model-selection tree</strong>: if the data has known output (labels) the model should reproduce → <strong>supervised</strong>; if not → <strong>unsupervised</strong>. For supervised methods, a categorical expected output → <strong>classification</strong>, and a numerical (continuous metric) expected output → <strong>regression</strong>. For unsupervised methods, categories/clusters → <strong>clustering</strong>, associations between independent variables → <strong>association rules</strong>, and reducing the number of selected features → <strong>dimensionality reduction</strong>."
+  ],
+  analogies: [
+    { t: "Cooking a meal", d: "You do not serve dinner the moment you decide to cook. You shop, prep, taste as you go (validate), and only plate up (test) once you are happy." },
+    { t: "The exam vs the mock", d: "Validation is the mock exam you can still study from; testing is the final exam you do not change your answers after." }
+  ],
+  terms: [
+    { t: "Partition data", d: "Split data into training, testing and (sometimes) validation sets." },
+    { t: "Training set", d: "Data the model learns from." },
+    { t: "Validation set", d: "Data used to evaluate a preliminary model and tune it." },
+    { t: "Test set", d: "Data used for the final evaluation where no further changes are expected." },
+    { t: "Hyperparameters", d: "Settings tuned during optimisation (distinct from parameters learned from data)." },
+    { t: "Dimensionality reduction", d: "Reducing the number of selected features." },
+    { t: "Regularisation", d: "A technique used when optimising a model." },
+    { t: "Model-selection tree", d: "Known output? supervised vs unsupervised → classification / regression / clustering / association / dimensionality reduction." }
+  ],
+  flow: {
+    title: "Flowchart — the model-development pipeline",
+    cap: "Click any stage. Green diamonds are decisions; dashed arrows are the loops back.",
+    w: 820, h: 830,
+    nodes: [
+      { id:"p1", x:250, y:16, w:260, h:50, shape:"rect", c:"--c6", label:"Determine the problem", desc:"First, determine the problem to be answered." },
+      { id:"p2", x:250, y:80, w:260, h:50, shape:"rect", c:"--c6", label:"Gather appropriate data", desc:"Gather appropriate data for the problem." },
+      { id:"p3", x:250, y:144, w:260, h:50, shape:"rect", c:"--c6", label:"Prep, clean & transform", desc:"Prepare, clean and transform the data." },
+      { id:"p4", x:250, y:208, w:260, h:50, shape:"rect", c:"--c6", label:"Partition data\n(train / test / validation)", desc:"Partition the data into a training data set and a testing data set. A validation data set may not always be needed." },
+      { id:"p5", x:250, y:272, w:260, h:50, shape:"rect", c:"--c6", label:"Select features, model\n& quality metrics", desc:"Select the features to use, select a model (see the model-selection tree), and select the quality metrics you will judge it by." },
+      { id:"p6", x:250, y:336, w:260, h:50, shape:"rect", c:"--c6", label:"TRAIN on training set", desc:"Train the model on the training data set. One pass-through = one epoch." },
+      { id:"p7", x:250, y:400, w:260, h:50, shape:"rect", c:"--c6", label:"VALIDATE (tune)", desc:"Evaluate (validate) the model on a validation (tuning) data set, or by another method." },
+      { id:"p8", x:250, y:464, w:260, h:60, shape:"diamond", c:"--good", label:"Needs optimization?", desc:"Does the model need further optimisation?" },
+      { id:"p9", x:250, y:540, w:260, h:50, shape:"rect", c:"--c6", label:"TEST on test set", desc:"Test (evaluate) the final model on the test data set — no further changes expected." },
+      { id:"p10", x:250, y:604, w:260, h:60, shape:"diamond", c:"--good", label:"Ready for production?", desc:"Is the model ready for production?" },
+      { id:"p11", x:250, y:680, w:260, h:50, shape:"rect", c:"--c6", label:"DEPLOY + monitor", desc:"Deploy the model, put it at the site of deployment, and let the local site perform model verification. Monitor performance in the real world." },
+      { id:"p12", x:250, y:744, w:260, h:60, shape:"diamond", c:"--good", label:"Retraining needed?", desc:"Is retraining needed? If so, the loop begins again from gathering data." },
+      { id:"opt", x:590, y:452, w:210, h:80, shape:"rect", c:"--c6", fs:11, label:"Optimize:\nhyperparameters, dimensionality\nreduction, regularization", desc:"Optimising a model can include adjusting hyperparameters, dimensionality reduction on the data, and regularisation." }
+    ],
+    edges: [
+      {a:"p1",b:"p2"},{a:"p2",b:"p3"},{a:"p3",b:"p4"},{a:"p4",b:"p5"},{a:"p5",b:"p6"},{a:"p6",b:"p7"},{a:"p7",b:"p8"},
+      {a:"p8",b:"opt",label:"Yes"},{a:"opt",b:"p6",label:"retry",dash:true},
+      {a:"p8",b:"p9",label:"No"},{a:"p9",b:"p10"},
+      {a:"p10",b:"p11",label:"Yes"},{a:"p10",b:"opt",label:"No",dash:true},
+      {a:"p11",b:"p12"}
+    ],
+    routes: [
+      { d:"M510,774 L800,774 L800,8 L200,8 L200,80 L250,80", label:"Yes — retrain", labelX:720, labelY:700 }
+    ]
+  },
+  diagrams: [
+    { kind:"tree", title:"Diagram — the model-selection tree",
+      cap:"Recreated from ML1. Follow the questions to pick a family of methods." }
+  ],
+  interactive: null,
+  quiz: [
+    { type:"mc", q:"Look at the pipeline flowchart above. After “TRAIN on training set”, which stage comes next?",
+      opts:["DEPLOY + monitor","VALIDATE (tune)","Partition data","Gather appropriate data"], ans:1,
+      explain:"After training comes evaluation (validation) — then a decision about whether further optimisation is needed." },
+    { type:"mc", q:"According to the pipeline, which of these comes first?",
+      opts:["Select the model","Gather appropriate data","Test the final model","Deploy"], ans:1,
+      explain:"The pipeline starts by determining the problem, then gathering appropriate data." },
+    { type:"tf", q:"Data is partitioned into training and testing sets, and a validation set may not always be needed.",
+      ans:true, explain:"True — the deck notes a validation data set may not always be needed." },
+    { type:"fib", q:"One pass through the training data is one ______.",
+      ans:["epoch"], explain:"1 pass-through = 1 epoch." },
+    { type:"mc", q:"Which is NOT listed as part of optimising a model?",
+      opts:["Adjusting hyperparameters","Dimensionality reduction","Regularization","Deleting the test set"], ans:3,
+      explain:"Optimisation can include adjusting hyperparameters, dimensionality reduction and regularisation." },
+    { type:"mc", q:"If the data has NO known output (labels), the model-selection tree sends you to…",
+      opts:["Supervised methods","Unsupervised methods","Regression","Classification"], ans:1,
+      explain:"No known output → unsupervised methods; known output → supervised methods." },
+    { type:"mc", q:"For a supervised method with a numerical (continuous) expected output, you choose…",
+      opts:["Classification","Regression","Clustering","Association rules"], ans:1,
+      explain:"Categorical output → classification; numerical (continuous) output → regression." }
+  ],
+  flashcards: [
+    { front:"Pipeline order", back:"Problem → gather → prep → partition → features → model → metrics → train → validate → test → deploy → monitor." },
+    { front:"Train / validation / test", back:"Learn on train, tune on validation, final check on test." },
+    { front:"Optimising includes", back:"Hyperparameters, dimensionality reduction, regularisation." },
+    { front:"Model-selection tree", back:"Known output? → supervised (classification/regression) : unsupervised (clustering/association/dim. reduction)." },
+    { front:"Epoch", back:"One pass through the training data." }
+  ],
+  dnd: { kind:"order", title:"Order the pipeline",
+    prompt:"Drag these stages into the order the deck gives (an early slice of the pipeline).",
+    items:["Determine the problem","Gather appropriate data","Prep, clean & transform","Partition data","Train the model","Test the final model"] }
+},
+
+/* ------------------------------------------------------------------ L7 --- */
+{
+  id: 7, icon: "📈", accent: "--c7",
+  title: "Regression (Supervised)",
+  blurb: "Predicting continuous numbers: simple, multiple and polynomial regression, plus tree-based regressors.",
+  explanation: [
+    "<strong>Regression</strong> is a supervised task where the output has a continuous value. In the deck's example, 'Wind Speed' is not discrete but continuous over a range; the goal is to predict a value as close to the actual as possible, and evaluation is done by calculating the error — the smaller the error, the greater the accuracy.",
+    "<strong>Simple linear regression</strong> models the relationship between two variables: the factor being predicted is the <strong>dependent variable</strong>, and the factor(s) used to predict it are the <strong>independent variables</strong>. <strong>Multiple linear regression</strong> is an extension used to predict a value based on two or more other variables. <strong>Polynomial regression</strong> is a form of linear regression where the relationship between the independent variable x and dependent variable y is modelled as an nth-degree polynomial — it fits a nonlinear relationship between x and the conditional mean of y, denoted E(y|x).",
+    "Tree-based regression scales this up. <strong>Decision-tree regression</strong> builds a model as a tree: it breaks the dataset into smaller and smaller subsets while the tree grows. Decision nodes (e.g. Outlook) have two or more branches (Sunny, Overcast, Rainy), leaf nodes represent a decision on the numerical target, and the topmost decision node — the best predictor — is the <strong>root node</strong>. Decision trees handle both categorical and numerical data.",
+    "<strong>Random-forest regression</strong> is an ensemble: it makes predictions by combining decisions from a sequence of base models, where each base model is a simple decision tree. The approach: pick K data points at random from the training set; build the decision tree for those points; choose the number of trees (Ntree) and repeat; then for a new data point, let every tree predict Y and assign the average of all predicted Y values.",
+    "The deck's regression-algorithms table lists <strong>linear regression</strong> (predicts a continuous value from a linear relationship; sensitive to outliers, assumes linearity), <strong>logistic regression</strong> (predicts a categorical value via a logistic function), <strong>ridge regression</strong> (adds a penalty term to the loss function to prevent overfitting) and <strong>lasso regression</strong> (adds a penalty term to encourage sparsity / feature selection)."
+  ],
+  analogies: [
+    { t: "Trend line on a graph", d: "Simple linear regression is drawing the best straight line through a scatter of dots — like predicting someone's weight from their height." },
+    { t: "Many inputs, one answer", d: "Multiple regression is estimating house price from size, location and age at once — several predictors feeding one number." },
+    { t: "Ask the crowd", d: "A random forest is asking many trees and averaging their answers — the crowd beats any single tree." }
+  ],
+  terms: [
+    { t: "Regression", d: "Supervised task where the output is continuous." },
+    { t: "Dependent variable", d: "The factor being predicted." },
+    { t: "Independent variable", d: "A factor used to predict the dependent variable." },
+    { t: "Simple linear regression", d: "Relates two variables (one independent variable)." },
+    { t: "Multiple linear regression", d: "Predicts a value from two or more independent variables." },
+    { t: "Polynomial regression", d: "Linear regression modelled as an nth-degree polynomial; fits a nonlinear relationship." },
+    { t: "Decision-tree regression", d: "Tree of decision and leaf nodes; handles categorical and numerical data." },
+    { t: "Random-forest regression", d: "Ensemble of decision trees; averages their predictions." },
+    { t: "Ridge / Lasso", d: "Regularised linear regression that adds a penalty term (Lasso encourages sparsity)." }
+  ],
+  flow: {
+    title: "Flowchart — how a decision-tree regressor splits",
+    cap: "Click the nodes — decision nodes vs leaf nodes.",
+    h: 340,
+    nodes: [
+      { id:"root", x:280, y:14, w:200, h:58, shape:"round", c:"--c7", label:"Root node — best predictor\n(e.g. Outlook)", desc:"The topmost decision node corresponds to the best predictor and is called the <b>root node</b>." },
+      { id:"b1", x:30, y:150, w:170, h:54, shape:"rect", c:"--c7", label:"Branch: Sunny", desc:"A decision node (e.g. Outlook) has two or more branches (e.g. Sunny, Overcast, Rainy), each a value of the attribute tested." },
+      { id:"b2", x:295, y:150, w:170, h:54, shape:"rect", c:"--c7", label:"Branch: Overcast", desc:"Each branch represents a value for the attribute tested at the decision node." },
+      { id:"b3", x:560, y:150, w:170, h:54, shape:"rect", c:"--c7", label:"Branch: Rainy", desc:"The tree keeps splitting the dataset into smaller and smaller subsets as it grows." },
+      { id:"leaf", x:280, y:258, w:200, h:58, shape:"rect", c:"--good", label:"Leaf node — decision on\nthe numerical target", desc:"A <b>leaf node</b> represents a decision on the numerical target (e.g. Hours Played)." }
+    ],
+    edges: [ {a:"root",b:"b1"},{a:"root",b:"b2"},{a:"root",b:"b3"},{a:"b1",b:"leaf"},{a:"b2",b:"leaf"},{a:"b3",b:"leaf"} ]
+  },
+  diagrams: [
+    { kind:"table", title:"Diagram — simple vs multiple linear regression",
+      cap:"Recreated from ML2.",
+      head:["Aspect","Simple linear regression","Multiple linear regression"],
+      rows:[
+        ["Independent variables","One","Two or more"],
+        ["Model complexity","Simpler, interpretable","More complex, can model multiple relationships"],
+        ["Equation","y = β₀ + β₁x + ε","y = β₀ + β₁x₁ + β₂x₂ + … + βₙxₙ + ε"],
+        ["Use case","A single predictor of interest","Multiple predictors influencing the outcome"],
+        ["Application","Predicting weight based on height","Predicting house prices from multiple factors"]
+      ] }
+  ],
+  interactive: { kind:"linreg", title:"Interactive — simple linear regression",
+    cap:"Drag the data points around and watch the best-fit line (and its error) update live.",
+    hint:"The model looks for the line that makes the error as small as possible — exactly the goal the deck describes for regression." },
+  quiz: [
+    { type:"mc", q:"Simple linear regression predicts a value using…",
+      opts:["One independent variable","Two or more independent variables","No variables","A decision tree"], ans:0,
+      explain:"Simple linear regression relates two variables — one independent variable predicting the dependent variable." },
+    { type:"tf", q:"Polynomial regression can model a nonlinear relationship between x and y.",
+      ans:true, explain:"True — it models the relationship as an nth-degree polynomial, fitting a nonlinear relationship." },
+    { type:"mc", q:"A random-forest regressor makes a prediction by…",
+      opts:["Using one decision tree","Averaging the predictions of many trees","Clustering the data","Drawing a straight line"], ans:1,
+      explain:"It assigns the new data point the average across all predicted Y values from its trees." },
+    { type:"fib", q:"Multiple regression predicts a value based on ______ or more other variables.",
+      ans:["two","2"], explain:"Multiple regression predicts from two or more other variables." },
+    { type:"mc", q:"In a decision tree, the topmost decision node — the best predictor — is called the…",
+      opts:["Leaf node","Root node","Branch","Epoch"], ans:1,
+      explain:"That is the <b>root node</b>." },
+    { type:"mc", q:"Ridge and Lasso regression add what to the loss function?",
+      opts:["A penalty term","A second output","A random forest","An epoch"], ans:0,
+      explain:"They add a penalty term — Ridge to prevent overfitting, Lasso to encourage sparsity (feature selection)." }
+  ],
+  flashcards: [
+    { front:"Regression output", back:"A continuous value (e.g. wind speed, price)." },
+    { front:"Dependent vs independent", back:"Dependent = predicted; independent = predictors." },
+    { front:"Polynomial regression", back:"Linear regression as an nth-degree polynomial — fits nonlinear relationships." },
+    { front:"Random forest (regression)", back:"Average of many independently-built decision trees." },
+    { front:"Ridge vs Lasso", back:"Both add a penalty term; Lasso also encourages sparsity (feature selection)." }
+  ],
+  dnd: { kind:"order", title:"Order the random-forest recipe",
+    prompt:"Put the deck's random-forest steps in order.",
+    items:["Pick K random data points","Build a decision tree on those points","Repeat to build Ntree trees","Average the trees' predictions"] }
+},
+
+/* ------------------------------------------------------------------ L8 --- */
+{
+  id: 8, icon: "🔍", accent: "--c8",
+  title: "Classification (Supervised)",
+  blurb: "Predicting categories: logistic regression, KNN, Naive Bayes, decision trees, random forests and SVM.",
+  explanation: [
+    "<strong>Classification</strong> is a supervised task where the output has defined labels (discrete values). In the deck's example the output 'Purchased' has labels 0 or 1 — 1 means the customer will purchase, 0 means they will not. It can be <strong>binary</strong> (predicts 0 or 1, yes or no) or <strong>multi-class</strong> (predicts more than one class, as Gmail sorts mail into social, promotions, updates and offers).",
+    "<strong>Logistic regression</strong> models the probability of a class or event existing — pass/fail, win/lose, alive/dead, healthy/sick — and can be extended to several classes. By the number of categories it is <strong>binomial</strong> (two types, e.g. win vs loss), <strong>multinomial</strong> (three or more unordered types, e.g. disease A vs B vs C) or <strong>ordinal</strong> (ordered categories, e.g. 'very poor', 'poor', 'good', 'very good', which can be scored 0, 1, 2, 3).",
+    "<strong>K-nearest neighbours (KNN)</strong> classifies cases based on their similarity to other cases: data points near each other are neighbours, similar cases with the same class labels are near each other, and the distance between two cases measures their dissimilarity. Distance can be computed in different ways, for example <strong>Euclidean distance</strong>.",
+    "<strong>Naive Bayes</strong> is a probabilistic classifier based on <strong>Bayes' theorem</strong>. It is not a single algorithm but a family sharing one principle: every pair of features being classified is independent of each other. Its types are <strong>multinomial</strong> (mostly document classification, using word frequencies), <strong>Bernoulli</strong> (boolean predictors — a word occurs or not) and <strong>Gaussian</strong> (continuous predictors, assumed sampled from a Gaussian distribution).",
+    "<strong>Decision trees</strong> can solve both classification and regression. For classification, leaf nodes represent a classification or decision, and the tree can represent any boolean function on discrete attributes. A tree whose target variable is categorical is a <strong>categorical variable decision tree</strong>; with a continuous target it is a <strong>continuous variable decision tree</strong>. <strong>Random forests</strong> are an ensemble of decision trees that improves accuracy and reduces overfitting. <strong>Support vector machines (SVM)</strong> find the optimal <strong>hyperplane</strong> to separate data points into different classes, and can handle non-linear relationships with kernels."
+  ],
+  analogies: [
+    { t: "You are the company you keep", d: "KNN is exactly that: a new point is classified by the majority of its k nearest neighbours — its closest examples decide its label." },
+    { t: "Twenty questions", d: "A decision tree is a game of twenty questions: each node asks a yes/no question, and the leaves are the answers." },
+    { t: "Drawing a line in the sand", d: "SVM finds the best dividing line (hyperplane) that separates the classes with the widest possible margin." }
+  ],
+  terms: [
+    { t: "Classification", d: "Supervised task with discrete labels; binary or multi-class." },
+    { t: "Logistic regression", d: "Models the probability of a class; binomial, multinomial or ordinal." },
+    { t: "K-nearest neighbours", d: "Classifies by similarity to nearest neighbours; e.g. Euclidean distance." },
+    { t: "Naive Bayes", d: "Probabilistic classifier based on Bayes' theorem, assuming feature independence." },
+    { t: "Decision tree", d: "Tree of decision and leaf nodes; handles categorical and numerical data." },
+    { t: "Random forest", d: "Ensemble of decision trees — more accurate, reduces overfitting." },
+    { t: "Support vector machine", d: "Finds the optimal hyperplane separating classes; kernels handle non-linearity." }
+  ],
+  flow: {
+    title: "Flowchart — classifying a new point with KNN",
+    cap: "Click each step.",
+    h: 400,
+    nodes: [
+      { id:"q0", x:290, y:12, w:180, h:54, shape:"round", c:"--c8", label:"New data point", desc:"A new case whose class we do not know." },
+      { id:"q1", x:250, y:106, w:260, h:58, shape:"rect", c:"--c8", label:"Measure distance to all\ntraining points (e.g. Euclidean)", desc:"The distance between two cases is a measure of their dissimilarity; Euclidean distance is one way to compute it." },
+      { id:"q2", x:270, y:204, w:220, h:54, shape:"rect", c:"--c8", label:"Pick the K nearest\nneighbours", desc:"Data points that are near each other are neighbours — similar cases with the same class labels sit close together." },
+      { id:"q3", x:250, y:302, w:260, h:58, shape:"rect", c:"--good", label:"Majority class →\npredicted label", desc:"The new point takes the majority class of its k nearest neighbours." }
+    ],
+    edges: [ {a:"q0",b:"q1"},{a:"q1",b:"q2"},{a:"q2",b:"q3"} ]
+  },
+  diagrams: [
+    { kind:"tree", title:"Diagram — a decision tree for classification",
+      cap:"Recreated from ML2: Outlook → Sunny / Overcast / Rainy → Play (a classification).",
+      root:"Outlook", branches:["Sunny","Overcast","Rainy"], leaf:"Play" }
+  ],
+  interactive: { kind:"knn", title:"Interactive — a KNN decision boundary",
+    cap:"Click the canvas to drop points (switch class with the toggle). Change K and watch the boundary redraw.",
+    hint:"Classification puts points into discrete classes. KNN decides each region by the majority class of its k nearest neighbours." },
+  quiz: [
+    { type:"mc", q:"Classification is a supervised task whose output has…",
+      opts:["A continuous value","Defined (discrete) labels","No output","Only one class"], ans:1,
+      explain:"Classification outputs defined labels (discrete values); regression outputs continuous values." },
+    { type:"tf", q:"Naive Bayes assumes that every pair of features being classified is independent of each other.",
+      ans:true, explain:"True — that independence assumption is the common principle of the Naive Bayes family." },
+    { type:"fib", q:"A common way to measure the distance between two data points in KNN is ______ distance.",
+      ans:["euclidean"], explain:"The deck gives Euclidean distance as an example." },
+    { type:"mc", q:"Logistic regression is used to model the ______ of a class or event existing.",
+      opts:["Variance","Probability","Hyperplane","Epoch"], ans:1,
+      explain:"It models the probability of a class or event (pass/fail, win/lose, healthy/sick)." },
+    { type:"mc", q:"Support vector machines find the optimal ______ to separate classes.",
+      opts:["Decision tree","Hyperplane","Cluster","Centroid"], ans:1,
+      explain:"SVM finds the optimal <b>hyperplane</b>; kernels let it handle non-linear relationships." },
+    { type:"mc", q:"'Disease A vs disease B vs disease C' — three or more unordered categories — is which logistic-regression type?",
+      opts:["Binomial","Multinomial","Ordinal","Gaussian"], ans:1,
+      explain:"Multinomial targets have three or more possible types that are not ordered." }
+  ],
+  flashcards: [
+    { front:"Classification output", back:"Discrete labels (binary or multi-class)." },
+    { front:"Logistic regression types", back:"Binomial (2), multinomial (3+ unordered), ordinal (ordered)." },
+    { front:"KNN", back:"Classify by the majority class of the k nearest neighbours (e.g. Euclidean distance)." },
+    { front:"Naive Bayes types", back:"Multinomial, Bernoulli, Gaussian." },
+    { front:"SVM", back:"Finds the optimal hyperplane separating classes." }
+  ],
+  dnd: { kind:"match", title:"Match the classifier to its idea",
+    prompt:"Drag each idea onto the classifier it belongs to.",
+    pairs:[
+      { left:"KNN", right:"Similar cases sit near each other" },
+      { left:"Naive Bayes", right:"Features are independent; uses Bayes' theorem" },
+      { left:"SVM", right:"Optimal hyperplane separates classes" },
+      { left:"Logistic regression", right:"Models the probability of a class" }
+    ] }
+},
+
+/* ------------------------------------------------------------------ L9 --- */
+{
+  id: 9, icon: "🧮", accent: "--c9",
+  title: "Unsupervised Learning & Clustering",
+  blurb: "Finding structure without labels: clustering, association rules, K-means and hierarchical clustering.",
+  explanation: [
+    "<strong>Unsupervised learning</strong> is training a machine on information that is neither classified nor labelled, allowing the algorithm to act on that information without guidance. The task is to group unsorted information according to similarities, patterns and differences, without any prior training of the data. It is more challenging than supervised learning because of the absence of labels — for example, clustering gene-expression data to identify groups of genes with similar expression patterns.",
+    "Its two main problems: <strong>clustering</strong> (discovering inherent groupings, such as grouping customers by purchasing behaviour) and <strong>association</strong> (discovering rules that describe large portions of the data, such as 'people that buy X also tend to buy Y'). The deck's example algorithms are <strong>k-means</strong> for clustering and the <strong>Apriori</strong> algorithm for association-rule learning.",
+    "<strong>K-means</strong> is the simplest unsupervised algorithm. The number of clusters is represented by a variable 'k', and for each cluster a <strong>centroid</strong> is defined — the arithmetic mean of all data points belonging to that cluster, sitting at the centre of the cluster (considering Euclidean distance). The trick is to define the centroids far away from each other so the variation is less. Each data point is then assigned to the nearest centroid, so that the sum of the squared distance between the points and the cluster's centroid is at a minimum.",
+    "<strong>Hierarchical clustering</strong> sorts clusters into an order based on the hierarchy of data similarity. It comes in two types: <strong>agglomerative</strong> (bottom-up) — each data point starts as an individual cluster and similar clusters merge until one or K clusters remain — and <strong>divisive</strong> (top-down) — all points start as a single cluster and, each iteration, dissimilar points are separated off. Most hierarchical algorithms (single linkage, complete linkage, median linkage, Ward's method) follow the agglomerative approach.",
+    "The deck also lists dimensionality-reduction and related methods: <strong>PCA</strong> (reduces dimensionality while preserving important features), <strong>SVD</strong> (decomposes a matrix into singular values and vectors), <strong>ICA</strong> (identifies independent sources from mixed signals), <strong>GMM</strong> (models data as a mixture of Gaussian distributions), <strong>Apriori</strong>, <strong>t-SNE</strong> and <strong>UMAP</strong> (non-linear dimensionality reduction that preserve structure). One note on trade-offs: the most basic disadvantage of supervised learning is that the dataset must be hand-labelled — costly at scale; the most basic disadvantage of unsupervised learning is that its application spectrum is limited."
+  ],
+  analogies: [
+    { t: "Sorting a pile of laundry", d: "Nobody tells you the categories. You group by similarity — colour, fabric — and discover the clusters yourself. That is unsupervised learning." },
+    { t: "Supermarket baskets", d: "Association rules: if shoppers who buy bread also buy butter, the store learns a rule — without anyone labelling the baskets." },
+    { t: "Merging or splitting", d: "Agglomerative clustering builds up from individual points (bottom-up); divisive clustering breaks one big group down (top-down)." }
+  ],
+  terms: [
+    { t: "Unsupervised learning", d: "Learning from unlabelled data without guidance; group by similarity." },
+    { t: "Clustering", d: "Discovering inherent groupings in data." },
+    { t: "Association", d: "Discovering rules that describe large portions of the data (X buyers also buy Y)." },
+    { t: "K-means", d: "Cluster data into k groups; each has a centroid (arithmetic mean)." },
+    { t: "Centroid", d: "The centre of a cluster — the arithmetic mean of its points." },
+    { t: "Hierarchical clustering", d: "Agglomerative (bottom-up) or divisive (top-down)." },
+    { t: "PCA", d: "Reduces dimensionality while preserving the most important features." },
+    { t: "t-SNE / UMAP", d: "Non-linear dimensionality reduction for visualising high-dimensional data." }
+  ],
+  flow: {
+    title: "Flowchart — the K-means loop",
+    cap: "Recreated from the deck's K-means figure. Click each step.",
+    h: 490,
+    nodes: [
+      { id:"k0", x:250, y:14, w:260, h:56, shape:"round", c:"--c9", label:"Choose K objects as\ninitial centroids", desc:"Choose K objects as initial cluster centres. The trick is to place centroids far apart so variation is less." },
+      { id:"k1", x:250, y:112, w:260, h:56, shape:"rect", c:"--c9", label:"Assign each point to\nthe nearest centroid", desc:"Each data point is assigned to the nearest centroid so the sum of squared distances is minimised." },
+      { id:"k2", x:250, y:210, w:260, h:56, shape:"rect", c:"--c9", label:"Identify the new\ncluster centroids", desc:"Recompute each centroid as the arithmetic mean of the points now in its cluster." },
+      { id:"k3", x:250, y:308, w:260, h:56, shape:"rect", c:"--c9", label:"Reassign points\n(minimum distance)", desc:"Reassign points based on minimum distance to the new centroids." },
+      { id:"k4", x:250, y:406, w:260, h:56, shape:"rect", c:"--good", label:"Repeat until centroids\nstop moving", desc:"The loop continues until the clusters stabilise." }
+    ],
+    edges: [ {a:"k0",b:"k1"},{a:"k1",b:"k2"},{a:"k2",b:"k3"},{a:"k3",b:"k4"},{a:"k4",b:"k2",label:"repeat",dash:true} ]
+  },
+  diagrams: [
+    { kind:"panels", title:"Diagram — clustering vs association",
+      cap:"Clustering groups similar points; association finds co-occurring items.",
+      items:[
+        { label:"Clustering", note:"Inherent groupings (e.g. customers by behaviour)", filled:6, hollow:0 },
+        { label:"Association", note:"Rules: buyers of X also buy Y", filled:3, hollow:3 }
+      ] }
+  ],
+  interactive: { kind:"kmeans", title:"Interactive — K-means clustering",
+    cap:"Choose K, then press Step to run the loop: assign → update centroids → repeat. Add your own points by clicking.",
+    hint:"Each coloured region shows which centroid is nearest. Watch the centroids move to the arithmetic mean of their points." },
+  quiz: [
+    { type:"mc", q:"K-means is an example of which kind of learning?",
+      opts:["Supervised","Unsupervised","Reinforcement","Transfer"], ans:1,
+      explain:"K-means is the simplest unsupervised learning algorithm." },
+    { type:"fib", q:"The centre of a cluster — the arithmetic mean of its points — is called the ______.",
+      ans:["centroid"], explain:"That is the <b>centroid</b>." },
+    { type:"tf", q:"Hierarchical clustering can be agglomerative (bottom-up) or divisive (top-down).",
+      ans:true, explain:"True — agglomerative merges clusters; divisive separates them." },
+    { type:"mc", q:"'People that buy X also tend to buy Y' is an example of…",
+      opts:["Clustering","Association","Regression","Classification"], ans:1,
+      explain:"That is <b>association</b> — discovering rules that describe large portions of the data." },
+    { type:"mc", q:"Which method reduces dimensionality while preserving the most important features?",
+      opts:["K-means","PCA","Apriori","KNN"], ans:1,
+      explain:"<b>PCA</b> (Principal Component Analysis) reduces dimensionality while preserving important features." },
+    { type:"mc", q:"Which type of hierarchical clustering starts with every point as its own cluster?",
+      opts:["Divisive","Agglomerative","Binomial","Ordinal"], ans:1,
+      explain:"<b>Agglomerative</b> (bottom-up) starts with individual clusters and merges them." }
+  ],
+  flashcards: [
+    { front:"Clustering vs association", back:"Clustering = inherent groups; association = 'X buyers also buy Y' rules." },
+    { front:"K-means", back:"k clusters, each with a centroid (arithmetic mean); assign points to nearest centroid." },
+    { front:"Agglomerative vs divisive", back:"Bottom-up merge vs top-down split." },
+    { front:"PCA", back:"Reduces dimensionality, preserving important features." },
+    { front:"Supervised vs unsupervised downside", back:"Supervised: costly hand-labelling. Unsupervised: limited application spectrum." }
+  ],
+  dnd: { kind:"order", title:"Order the K-means loop",
+    prompt:"Put the K-means steps in order.",
+    items:["Choose K initial centroids","Assign each point to the nearest centroid","Identify the new cluster centroids","Reassign points by minimum distance","Repeat until stable"] }
+},
+
+/* ----------------------------------------------------------------- L10 --- */
+{
+  id: 10, icon: "🧠", accent: "--c10",
+  title: "Neural Networks & Deep Learning",
+  blurb: "Artificial neural networks modelled on the brain, and the deep architectures built from them.",
+  explanation: [
+    "<strong>Artificial neural networks (ANNs)</strong> are constructed and implemented to model the human brain. They perform tasks such as pattern matching, classification, optimisation, approximation, vector quantisation and data clustering — tasks that are difficult for traditional computers. An ANN possesses a large number of processing elements called <strong>nodes</strong> (neurons) which operate in parallel. Neurons are connected to others by connection links; each link is associated with <strong>weights</strong> that contain information about the input signal. A typical network has an <strong>input</strong> layer, one or more <strong>hidden</strong> layers, and an <strong>output</strong> layer.",
+    "<strong>Deep learning</strong> is a subset of machine learning that uses neural networks with multiple hidden layers (deep neural networks). It excels at learning from large datasets and performs exceptionally well at image recognition, natural-language processing (NLP) and speech-to-text conversion.",
+    "Common architectures include <strong>convolutional neural networks (CNNs)</strong> for image analysis and visual tasks; <strong>recurrent neural networks (RNNs)</strong> and <strong>LSTMs</strong> for sequence data such as speech and time series; and <strong>transformers</strong> for language models (e.g. BERT, GPT)."
+  ],
+  analogies: [
+    { t: "A room full of voters", d: "Each neuron is a tiny voter passing a weighted signal forward; the network's answer is what emerges from all of them at once." },
+    { t: "Depth adds abstraction", d: "One hidden layer can spot edges; many hidden layers can build up to faces and objects — that layering is what 'deep' means." }
+  ],
+  terms: [
+    { t: "Artificial neural network", d: "A network of parallel nodes (neurons) modelled on the brain." },
+    { t: "Node / neuron", d: "A processing element; many operate in parallel." },
+    { t: "Connection / weight", d: "A link between neurons carrying a weight about the input signal." },
+    { t: "Hidden layer", d: "Layer(s) between input and output." },
+    { t: "Deep learning", d: "ML using neural networks with multiple hidden layers." },
+    { t: "CNN", d: "Convolutional neural network — for image analysis and visual tasks." },
+    { t: "RNN / LSTM", d: "For sequence data such as speech and time series." },
+    { t: "Transformer", d: "Architecture for language models, e.g. BERT and GPT." }
+  ],
+  flow: {
+    title: "Flowchart — signal flow through an ANN",
+    cap: "Click each layer.",
+    h: 235,
+    nodes: [
+      { id:"in", x:16, y:24, w:190, h:66, shape:"rect", c:"--c10", label:"Input layer\n(features)", desc:"The input layer receives the features. Neurons are connected to others by connection links, each associated with a weight." },
+      { id:"hid", x:285, y:24, w:190, h:66, shape:"rect", c:"--c10", label:"Hidden layer(s)\n(nodes / neurons)", desc:"Processing elements called nodes (neurons) operate in parallel. Deep learning uses multiple hidden layers." },
+      { id:"out", x:554, y:24, w:190, h:66, shape:"rect", c:"--c10", label:"Output layer\n(prediction)", desc:"The output layer produces the network's prediction." },
+      { id:"dl", x:170, y:142, w:420, h:64, shape:"round", c:"--good", label:"Deep learning = multiple hidden layers\n(CNN · RNN/LSTM · Transformers)", desc:"Deep learning uses neural networks with multiple hidden layers and excels at image recognition, NLP and speech-to-text." }
+    ],
+    edges: [ {a:"in",b:"hid"},{a:"hid",b:"out"},{a:"hid",b:"dl"} ]
+  },
+  diagrams: [
+    { kind:"layers", title:"Diagram — an artificial neural network",
+      cap:"Recreated from ML1: input → hidden → output, fully connected, each link carrying a weight." }
+  ],
+  interactive: null,
+  quiz: [
+    { type:"mc", q:"Deep learning uses neural networks with…",
+      opts:["No hidden layers","A single neuron","Multiple hidden layers","Only an output layer"], ans:2,
+      explain:"Deep learning uses networks with <b>multiple hidden layers</b> (deep neural networks)." },
+    { type:"tf", q:"The processing elements (neurons) of an ANN operate in parallel.",
+      ans:true, explain:"True — an ANN has many nodes/neurons operating in parallel." },
+    { type:"fib", q:"Convolutional neural networks (CNNs) are commonly used for ______ analysis.",
+      ans:["image","images","visual"], explain:"CNNs are used for image analysis and visual tasks." },
+    { type:"mc", q:"Which architecture is used for language models such as BERT and GPT?",
+      opts:["CNN","RNN","LSTM","Transformer"], ans:3,
+      explain:"<b>Transformers</b> are used for language models (e.g. BERT, GPT)." },
+    { type:"mc", q:"RNNs and LSTMs are best suited to…",
+      opts:["Image analysis","Sequence data like speech and time series","Static tables","Association rules"], ans:1,
+      explain:"RNNs and LSTMs handle sequence data such as speech and time series." },
+    { type:"tf", q:"In an ANN, each connection link is associated with a weight.",
+      ans:true, explain:"True — each link carries a weight containing information about the input signal." }
+  ],
+  flashcards: [
+    { front:"ANN", back:"Network of parallel nodes modelled on the brain; input → hidden → output." },
+    { front:"Weight", back:"Value on a connection link carrying information about the input signal." },
+    { front:"Deep learning", back:"Neural networks with multiple hidden layers." },
+    { front:"CNN / RNN / Transformer", back:"Images / sequences (speech, time series) / language models." },
+    { front:"ANN tasks", back:"Pattern matching, classification, optimisation, approximation, vector quantisation, clustering." }
+  ],
+  dnd: { kind:"match", title:"Match the architecture to its job",
+    prompt:"Drag each job onto the architecture it belongs to.",
+    pairs:[
+      { left:"CNN", right:"Image analysis and visual tasks" },
+      { left:"RNN / LSTM", right:"Sequence data (speech, time series)" },
+      { left:"Transformer", right:"Language models (BERT, GPT)" },
+      { left:"Deep learning", right:"Neural nets with multiple hidden layers" }
+    ] }
+}
+
+);
+
+/* ------------------------------------------------------------------ BOSS --- */
+/* A final quiz drawn from across all levels. Same question schema. */
+const BOSS = {
+  icon: "👑", accent: "--cboss",
+  title: "Boss Level",
+  blurb: "One final gauntlet across every level. No hints — show what you have learned.",
+  quiz: [
+    { type:"mc", q:"Which is the correct nesting, outermost to innermost?",
+      opts:["ML ⊃ AI ⊃ DL ⊃ DS","DS ⊃ AI ⊃ ML ⊃ DL","AI ⊃ DS ⊃ DL ⊃ ML","DL ⊃ ML ⊃ AI ⊃ DS"], ans:1,
+      explain:"Data science is the outer field; AI sits inside it, ML inside AI, and deep learning deepest of all." },
+    { type:"mc", q:"In machine learning, the machine is given input and output data and creates its own…",
+      opts:["Hardware","Rules (the model)","Labels","Clusters"], ans:1,
+      explain:"ML creates its own rules during training — the model." },
+    { type:"fib", q:"Learning that reuses a model from a related domain is called ______ learning.",
+      ans:["transfer"], explain:"Transfer learning — e.g. ImageNet images used for medical images." },
+    { type:"mc", q:"Which term means 'one pass through the training data'?",
+      opts:["Instance","Epoch","Label","Centroid"], ans:1,
+      explain:"One epoch = one pass through the training data." },
+    { type:"mc", q:"A model that exactly fits the training data but performs poorly on new data is…",
+      opts:["Underfit","Overfit","Well-generalised","A weak learner"], ans:1,
+      explain:"That is overfitting — low training error, high test error (high variance)." },
+    { type:"mc", q:"In the model-development pipeline, what is partitioned first?",
+      opts:["The model","The data","The metrics","The features"], ans:1,
+      explain:"Data is partitioned into training, testing and (sometimes) validation sets." },
+    { type:"mc", q:"Which task predicts a continuous value?",
+      opts:["Classification","Regression","Clustering","Association"], ans:1,
+      explain:"Regression predicts continuous values; classification predicts discrete labels." },
+    { type:"mc", q:"Which algorithm classifies a new point by its nearest neighbours?",
+      opts:["PCA","KNN","SVD","Apriori"], ans:1,
+      explain:"K-nearest neighbours classifies by similarity to nearby cases." },
+    { type:"mc", q:"K-means, hierarchical clustering and PCA are all…",
+      opts:["Supervised","Unsupervised","Reinforcement","Transfer"], ans:1,
+      explain:"They are unsupervised algorithms." },
+    { type:"mc", q:"A neural network with multiple hidden layers is the basis of…",
+      opts:["Traditional programming","Deep learning","Linear regression","Association rules"], ans:1,
+      explain:"Deep learning uses neural networks with multiple hidden layers." }
+  ]
+};
+
+/* =========================================================================
+   MACHINE LEARNING QUEST — engine part 1
+   helpers · state & storage · badges/levelling · HUD · level map ·
+   level view · flowchart renderer · diagram renderers
+   (part 2 continues: interactives, quiz, flashcards, drag&drop, dashboard)
+   ========================================================================= */
+"use strict";
+
+/* ---------- tiny DOM helpers ---------- */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const el = (tag, cls, html) => { const n=document.createElement(tag); if(cls)n.className=cls; if(html!=null)n.innerHTML=html; return n; };
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const todayStr = () => new Date().toISOString().slice(0,10);
+const dayDiff = (a,b) => Math.round((new Date(b)-new Date(a))/86400000);
+
+/* ---------- toast + confetti + modal ---------- */
+function toast(msg, kind){
+  const wrap = $("#toasts");
+  const t = el("div", "toast"+(kind?" "+kind:""), msg);
+  wrap.appendChild(t);
+  setTimeout(()=>{ t.style.transition="opacity .4s,transform .4s"; t.style.opacity="0"; t.style.transform="translateY(10px)"; }, 2200);
+  setTimeout(()=>t.remove(), 2700);
+}
+function confetti(n=90){
+  const c = el("canvas","confetti"); document.body.appendChild(c);
+  const ctx=c.getContext("2d"); const W=c.width=innerWidth, H=c.height=innerHeight;
+  const cols=["#ff6b6b","#ffb020","#12b886","#4dabf7","#9775fa","#f06595","#fcc419"];
+  const parts=Array.from({length:n},()=>({x:Math.random()*W,y:-20-Math.random()*H*0.3,r:4+Math.random()*6,
+     vx:(Math.random()-.5)*3, vy:2+Math.random()*4, a:Math.random()*6.28, va:(Math.random()-.5)*.3, col:cols[(Math.random()*cols.length)|0]}));
+  let frames=0;
+  (function loop(){
+    ctx.clearRect(0,0,W,H);
+    parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.a+=p.va;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle=p.col;
+      ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*0.6); ctx.restore(); });
+    frames++; if(frames<150) requestAnimationFrame(loop); else c.remove();
+  })();
+}
+function showModal({em,title,body,cta,onCta}){
+  const back=$("#modal"); back.innerHTML="";
+  const m=el("div","modal");
+  m.innerHTML = `<div class="mem">${em||"🎉"}</div><h2>${esc(title)}</h2><p>${body||""}</p>`;
+  const b=el("button","btn primary",cta||"Nice!"); b.onclick=()=>{ back.classList.remove("show"); onCta&&onCta(); };
+  m.appendChild(b); back.appendChild(m); back.classList.add("show");
+}
+
+/* =========================================================================
+   STATE + STORAGE
+   ========================================================================= */
+const SAVE_KEY = "mlquest_v1";
+const HEARTS_MAX = 5;
+
+function freshState(){
+  const lv = {};
+  LEVELS.forEach(l => lv[l.id] = { done:false, correct:0, total:0, seen:false });
+  return {
+    xp:0, hearts:HEARTS_MAX, lastHeartDay:todayStr(),
+    streak:0, lastVisit:null, theme:"light",
+    levels:lv, boss:{done:false,correct:0,total:0},
+    badges:[], xpByDay:{}, best:{}
+  };
+}
+let state = freshState();
+
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }catch(e){} }
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY); if(!raw) return false;
+    const s = JSON.parse(raw);
+    state = Object.assign(freshState(), s);
+    state.levels = Object.assign(freshState().levels, s.levels||{});
+    return true;
+  }catch(e){ return false; }
+}
+function addXP(n, why){
+  state.xp += n;
+  const d = todayStr(); state.xpByDay[d] = (state.xpByDay[d]||0) + n;
+  toast(`+${n} XP ${why?"· "+why:""}`, "good"); renderHUD(); save();
+}
+
+/* ---------- player level from XP ---------- */
+function playerLevel(){ return Math.floor(state.xp/120) + 1; }
+function xpIntoLevel(){ return state.xp % 120; }
+
+/* =========================================================================
+   BADGES
+   ========================================================================= */
+const BADGES = [
+  { id:"first-steps",  em:"👣", name:"First Steps",     desc:"Finish Level 1",              test:s=>s.levels[1].done },
+  { id:"data-digger",  em:"🧩", name:"Data Digger",     desc:"Finish Level 4",              test:s=>s.levels[4].done },
+  { id:"bias-buster",  em:"⚖️", name:"Bias Buster",     desc:"Finish Level 5",              test:s=>s.levels[5].done },
+  { id:"pipeline-pro", em:"🔄", name:"Pipeline Pro",    desc:"Finish Level 6",              test:s=>s.levels[6].done },
+  { id:"regression-rookie", em:"📈", name:"Regression Rookie", desc:"Finish Level 7",       test:s=>s.levels[7].done },
+  { id:"classifier-cadet", em:"🔍", name:"Classifier Cadet", desc:"Finish Level 8",          test:s=>s.levels[8].done },
+  { id:"cluster-champion", em:"🧮", name:"Cluster Champion", desc:"Finish Level 9",          test:s=>s.levels[9].done },
+  { id:"neural-net-ninja", em:"🧠", name:"Neural Net Ninja", desc:"Finish Level 10",         test:s=>s.levels[10].done },
+  { id:"perfect",      em:"💯", name:"Flawless",        desc:"Score 100% on any quiz",      test:s=>Object.values(s.best||{}).some(v=>v>=100) },
+  { id:"streak-3",     em:"🔥", name:"On a Roll",       desc:"A 3-day streak",              test:s=>s.streak>=3 },
+  { id:"xp-500",       em:"⭐", name:"High Scorer",     desc:"Reach 500 XP",                test:s=>s.xp>=500 },
+  { id:"boss-slayer",  em:"👑", name:"Boss Slayer",     desc:"Beat the Boss Level",         test:s=>s.boss.done }
+];
+function checkBadges(){
+  BADGES.forEach(b=>{
+    if(!state.badges.includes(b.id) && b.test(state)){
+      state.badges.push(b.id);
+      showModal({em:b.em, title:"Badge unlocked!", body:`You earned <b>${b.name}</b> — ${b.desc}.`, cta:"Collect it"});
+    }
+  });
+  save();
+}
+
+/* =========================================================================
+   HUD
+   ========================================================================= */
+function renderHUD(){
+  $("#hud-xp").textContent = state.xp;
+  $("#hud-level").textContent = playerLevel();
+  $("#hud-streak").textContent = state.streak;
+  $("#hud-hearts").textContent = state.hearts;
+  const pct = Math.round(xpIntoLevel()/120*100);
+  $("#hud-xpbar").style.width = pct+"%";
+  $("#hud-xpbar").parentElement.setAttribute("aria-label", `XP toward next player level: ${pct}%`);
+  $("#hud-heart-box").classList.toggle("hearts", state.hearts<=2);
+}
+
+/* =========================================================================
+   LEVEL UNLOCKING
+   ========================================================================= */
+function isUnlocked(id){ return id===1 || state.levels[id-1]?.done; }
+function allDone(){ return LEVELS.every(l=>state.levels[l.id].done); }
+
+/* =========================================================================
+   VIEW ROUTING
+   ========================================================================= */
+function go(view, arg){
+  $$(".view").forEach(v=>v.classList.remove("active"));
+  $("#view-"+view).classList.add("active");
+  window.scrollTo({top:0,behavior:"instant" in window?"instant":"auto"});
+  if(view==="home") renderMap();
+  if(view==="dashboard") renderDashboard();
+  if(view==="boss") renderBoss();
+  if(view==="level") renderLevel(arg);
+}
+
+/* =========================================================================
+   LEVEL MAP
+   ========================================================================= */
+function renderMap(){
+  const grid = $("#map-grid"); grid.innerHTML="";
+  LEVELS.forEach(l=>{
+    const st = state.levels[l.id];
+    const unlocked = isUnlocked(l.id);
+    const card = el("button","node"+(unlocked?"":" locked")+(st.done?" done":"")+(unlocked&&!st.done?" pulse":""));
+    card.style.setProperty("--accent", `var(${l.accent})`);
+    card.setAttribute("aria-label", `Level ${l.id}: ${l.title}${unlocked?"":" (locked)"}`);
+    const acc = st.total ? Math.round(st.correct/st.total*100) : null;
+    const stars = st.done ? "⭐⭐⭐" : (acc!=null ? "⭐".repeat(Math.max(1,Math.round(acc/34)))+"☆".repeat(3-Math.max(1,Math.round(acc/34))) : "☆☆☆");
+    card.innerHTML = `
+      <span class="badge-dot">${l.id}</span>
+      <span class="em">${l.icon}</span>
+      <span class="accent-bar"></span>
+      <h3>${esc(l.title)}</h3>
+      <p class="n-blurb">${esc(l.blurb)}</p>
+      <span class="n-foot"><span>${unlocked?(st.done?"Completed":"Play"):"Locked"}</span><span class="stars" title="best score">${stars}</span></span>
+      ${unlocked?"":'<span class="lock" aria-hidden="true">🔒</span>'}`;
+    if(unlocked) card.onclick=()=>go("level", l.id);
+    else card.onclick=()=>toast("Finish the previous level to unlock this one.", "bad");
+    grid.appendChild(card);
+  });
+  // boss node
+  const bossCard = el("button","node boss"+(allDone()?"":" locked"));
+  bossCard.style.setProperty("--accent","var(--cboss)");
+  bossCard.innerHTML = `<span class="em">👑</span>
+    <div style="flex:1;text-align:left">
+      <h3>Boss Level</h3>
+      <p class="n-blurb">${allDone()?"The final gauntlet is open.":"Finish all 10 levels to unlock the final quiz."}</p>
+    </div>
+    <span class="n-foot">${state.boss.done?"Beaten":"Locked"}</span>
+    ${allDone()?"":'<span class="lock" aria-hidden="true">🔒</span>'}`;
+  bossCard.onclick=()=> allDone()? go("boss") : toast("Complete all 10 levels first.", "bad");
+  grid.appendChild(bossCard);
+  // progress summary line
+  const doneCount = LEVELS.filter(l=>state.levels[l.id].done).length;
+  $("#map-progress").textContent = `${doneCount} / ${LEVELS.length} levels complete`;
+}
+
+/* =========================================================================
+   FLOWCHART RENDERER  (clickable, colour-coded SVG)
+   ========================================================================= */
+function borderPoint(n, tx, ty){
+  const cx=n.x+n.w/2, cy=n.y+n.h/2;
+  const dx=tx-cx, dy=ty-cy;
+  if(!dx && !dy) return {x:cx,y:cy};
+  const hw=n.w/2, hh=n.h/2;
+  const s = 1/Math.max(Math.abs(dx)/hw, Math.abs(dy)/hh);
+  return {x:cx+dx*s, y:cy+dy*s};
+}
+function edgeLabel(x, y, txt){
+  const w = String(txt).length*6.8+14, h=17;
+  return `<rect x="${(x-w/2).toFixed(1)}" y="${(y-h+4).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="5" style="fill:var(--surface)"/>
+          <text class="felabel" x="${x}" y="${y}" text-anchor="middle">${esc(txt)}</text>`;
+}
+function renderFlow(spec, mount){
+  const W=spec.w||760, H=spec.h;
+  const byId={}; spec.nodes.forEach(n=>byId[n.id]=n);
+  let svg = `<svg class="flow" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(spec.title)}">`;
+  svg += `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--line-strong)"/></marker></defs>`;
+  // edges first (under nodes)
+  spec.edges.forEach(e=>{
+    const a=byId[e.a], b=byId[e.b]; if(!a||!b) return;
+    const ac={x:a.x+a.w/2,y:a.y+a.h/2}, bc={x:b.x+b.w/2,y:b.y+b.h/2};
+    const p1=borderPoint(a,bc.x,bc.y), p2=borderPoint(b,ac.x,ac.y);
+    svg += `<line class="fedge" x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" marker-end="url(#arrow)" ${e.dash?'stroke-dasharray="6 5"':''}/>`;
+    if(e.label){
+      const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+      const horiz = Math.abs(p2.y-p1.y) < Math.abs(p2.x-p1.x);
+      svg += edgeLabel(horiz? mx : mx + 20, horiz? my-7 : my, e.label);
+    }
+  });
+  // routed loop-back paths (drawn outside the node area)
+  (spec.routes||[]).forEach(r=>{
+    svg += `<path class="fedge" d="${r.d}" marker-end="url(#arrow)" fill="none" stroke-dasharray="6 5"/>`;
+    if(r.label) svg += edgeLabel(r.labelX, r.labelY, r.label);
+  });
+  // nodes
+  spec.nodes.forEach(n=>{
+    const lines = String(n.label).split("\n");
+    const cx=n.x+n.w/2, cy=n.y+n.h/2;
+    const color = n.c?`var(${n.c})`:"var(--brand)";
+    let shape="";
+    if(n.shape==="label"){
+      svg += `<g class="fnode" data-id="${n.id}"><text x="${n.x}" y="${n.y+18}" style="fill:var(--ink-faint);font-weight:900;font-size:13px;letter-spacing:.05em">${esc(n.label)}</text></g>`;
+      return;
+    }
+    if(n.shape==="diamond"){
+      shape = `<polygon points="${cx},${n.y} ${n.x+n.w},${cy} ${cx},${n.y+n.h} ${n.x},${cy}" style="fill:${color};stroke:rgba(0,0,0,.12);stroke-width:2"/>`;
+    } else if(n.shape==="round"){
+      shape = `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.h/2}" style="fill:${color};stroke:rgba(0,0,0,.12);stroke-width:2"/>`;
+    } else {
+      shape = `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="14" style="fill:${color};stroke:rgba(0,0,0,.12);stroke-width:2"/>`;
+    }
+    const fs = n.fs || 14, lh = fs*1.34;
+    const startY = cy - (lines.length-1)*lh/2 + fs*0.35;
+    const tspans = lines.map((ln,i)=>`<tspan x="${cx}" y="${startY+i*lh}">${esc(ln)}</tspan>`).join("");
+    svg += `<g class="fnode" data-id="${n.id}" tabindex="0" role="button" aria-label="${esc(n.label.replace(/\n/g,' '))}">${shape}
+      <text class="flabel" text-anchor="middle" style="font-size:${fs}px">${tspans}</text></g>`;
+  });
+  svg += `</svg>`;
+  mount.innerHTML = svg;
+  const detail = mount.parentElement.querySelector(".fc-detail");
+  function select(id){
+    $$(".fnode", mount).forEach(g=>g.classList.toggle("sel", g.dataset.id===id));
+    const n=byId[id];
+    if(n&&detail) detail.innerHTML = `<b>${esc(n.label.replace(/\n/g,' '))}</b><br>${n.desc}`;
+  }
+  $$(".fnode", mount).forEach(g=>{
+    g.addEventListener("click",()=>select(g.dataset.id));
+    g.addEventListener("keydown",ev=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); select(g.dataset.id);} });
+  });
+  if(spec.nodes[0]) select(spec.nodes[0].id);
+}
+
+/* =========================================================================
+   DIAGRAM RENDERERS  (hand-drawn inline SVG / HTML — no external images)
+   ========================================================================= */
+function renderDiagram(d, mount){
+  const fig = el("div","figure");
+  fig.innerHTML = `<div class="fig-title">🖼️ ${esc(d.title)}</div>${d.cap?`<p class="fig-cap">${esc(d.cap)}</p>`:""}`;
+  const box = el("div"); fig.appendChild(box); mount.appendChild(fig);
+  const A = (i)=>["--c1","--c2","--c3","--c4","--c5","--c6","--c7","--c8","--c9","--c10","--cboss"][i%11];
+
+  if(d.kind==="nested"){
+    const H=380, W=640;
+    let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="nested fields">`;
+    const ins=[0,46,92,138], ws=[624,532,440,348], hs=[364,272,180,88];
+    d.items.forEach((it,i)=>{
+      s+=`<rect x="${8+ins[i]}" y="${8+ins[i]}" width="${ws[i]}" height="${hs[i]}" rx="26"
+            style="fill:var(${A(i)});fill-opacity:${0.16+i*0.14};stroke:var(${A(i)});stroke-width:3"/>`;
+      const cy = 8+ins[i]+ (i===3? 30 : 26);
+      s+=`<text x="${8+ins[i]+18}" y="${cy}" style="font-weight:900;font-size:${i===3?15:15}px;fill:var(--ink)">${esc(it.label)}</text>`;
+      if(i<3) s+=`<text x="${8+ins[i]+18}" y="${cy+17}" style="font-size:11.5px;fill:var(--ink-soft)">${esc(it.sub)}</text>`;
+      else   s+=`<text x="${8+ins[i]+18}" y="${cy+17}" style="font-size:11.5px;fill:var(--ink-soft)">${esc(it.sub)}</text>`;
+    });
+    s+=`</svg>`; box.innerHTML=s;
+  }
+
+  else if(d.kind==="table"){
+    let t=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.88rem">
+      <thead><tr>${d.head.map((h,i)=>`<th style="text-align:left;padding:9px 12px;border-bottom:3px solid var(--line-strong);background:var(--surface-2);font-weight:900">${esc(h)}</th>`).join("")}</tr></thead><tbody>`;
+    d.rows.forEach(r=>{ t+=`<tr>${r.map((c,i)=>`<td style="padding:9px 12px;border-bottom:2px solid var(--line);${i===0?'font-weight:800':'color:var(--ink-soft)'}">${esc(c)}</td>`).join("")}</tr>`; });
+    t+=`</tbody></table></div>`; box.innerHTML=t;
+  }
+
+  else if(d.kind==="panels"){
+    let h=`<div style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">`;
+    d.items.forEach((it,i)=>{
+      const total=(it.filled||0)+(it.hollow||0);
+      let dots=""; const cols=4;
+      for(let k=0;k<total;k++){
+        const x=18+(k%cols)*26, y=16+Math.floor(k/cols)*26;
+        dots+=`<circle cx="${x}" cy="${y}" r="8" style="fill:${k<it.filled?`var(${A(i)})`:'transparent'};stroke:var(--line-strong);stroke-width:2.5"/>`;
+      }
+      const rows=Math.ceil(total/cols);
+      h+=`<div class="card tight" style="text-align:center">
+        <svg viewBox="0 0 ${18+cols*26} ${30+rows*26}" style="width:100%;max-width:150px;height:auto;margin:0 auto">${dots}</svg>
+        <div style="font-weight:900;margin-top:6px">${esc(it.label)}</div>
+        <div style="font-size:.8rem;color:var(--ink-soft)">${esc(it.note)}</div></div>`;
+    });
+    h+=`</div>`; box.innerHTML=h;
+  }
+
+  else if(d.kind==="curves"){
+    const W=640,H=200, pad=20;
+    // shared synthetic data
+    const pts=[]; for(let i=0;i<16;i++){ const x=i/15; pts.push([x, 0.5+0.32*Math.sin(x*6.0)+ (Math.random()-0.5)*0.14]); }
+    function fit(deg){ return polyFit(pts.map(p=>p[0]), pts.map(p=>p[1]), deg); }
+    const degrees=[1,3,9], titles=["Underfit","Good fit","Overfit"], cols=["--c1","--c5","--c10"];
+    let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="underfit good overfit">`;
+    degrees.forEach((deg,pi)=>{
+      const ox=pad+pi*(W-2*pad)/3, w=(W-2*pad)/3-10, oy=30, h=H-60;
+      s+=`<rect x="${ox}" y="${oy}" width="${w}" height="${h}" rx="12" style="fill:var(--surface-2);stroke:var(--line)"/>`;
+      s+=`<text x="${ox+w/2}" y="${oy-10}" text-anchor="middle" style="font-weight:900;font-size:13px;fill:var(${cols[pi]})">${titles[pi]}</text>`;
+      const co=fit(deg);
+      // curve
+      let path="";
+      for(let k=0;k<=40;k++){ const x=k/40; const y=polyEval(co,x); const px=ox+8+x*(w-16); const py=oy+h-8-clamp(y,0,1)*(h-16); path+=(k?"L":"M")+px.toFixed(1)+","+py.toFixed(1); }
+      s+=`<path d="${path}" fill="none" stroke="var(${cols[pi]})" stroke-width="3"/>`;
+      pts.forEach(p=>{ const px=ox+8+p[0]*(w-16), py=oy+h-8-clamp(p[1],0,1)*(h-16); s+=`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3" style="fill:var(--ink-soft)"/>`; });
+    });
+    s+=`</svg>`; box.innerHTML=s;
+  }
+
+  else if(d.kind==="tree" && d.root){
+    // Outlook-style classification tree (L8)
+    const W=640,H=300;
+    let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="decision tree">`;
+    const cx=W/2;
+    s+=`<rect x="${cx-70}" y="16" width="140" height="48" rx="24" style="fill:var(--c8)"/><text x="${cx}" y="46" text-anchor="middle" style="fill:#fff;font-weight:900">${esc(d.root)}</text>`;
+    const bx=[110,320,530];
+    d.branches.forEach((b,i)=>{
+      s+=`<line x1="${cx}" y1="64" x2="${bx[i]}" y2="150" style="stroke:var(--line-strong);stroke-width:2.5"/>`;
+      s+=`<rect x="${bx[i]-70}" y="150" width="140" height="46" rx="12" style="fill:var(--c8);fill-opacity:.85"/><text x="${bx[i]}" y="178" text-anchor="middle" style="fill:#fff;font-weight:800;font-size:14px">${esc(b)}</text>`;
+      s+=`<line x1="${bx[i]}" y1="196" x2="${cx}" y2="252" style="stroke:var(--line-strong);stroke-width:2.5"/>`;
+    });
+    s+=`<rect x="${cx-80}" y="252" width="160" height="44" rx="22" style="fill:var(--good)"/><text x="${cx}" y="279" text-anchor="middle" style="fill:#fff;font-weight:900">${esc(d.leaf)}</text>`;
+    s+=`</svg>`; box.innerHTML=s;
+  }
+
+  else if(d.kind==="tree"){
+    // model-selection tree (L6) — laid out from computed positions so nothing overlaps
+    const W=820,H=392;
+    let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="model selection tree">`;
+    const mkBox=(cx,y,w,h,label,fill)=>{ let t=`<rect x="${cx-w/2}" y="${y}" width="${w}" height="${h}" rx="12" style="fill:${fill}"/>`;
+      const L=String(label).split("\n"), sy=y+h/2-(L.length-1)*8+5;
+      return t+L.map((ln,i)=>`<text x="${cx}" y="${sy+i*16}" text-anchor="middle" style="fill:#fff;font-weight:800;font-size:12px">${esc(ln)}</text>`).join(""); };
+    const mkDia=(cx,cy,w,h,label)=>{ let t=`<polygon points="${cx},${cy-h/2} ${cx+w/2},${cy} ${cx},${cy+h/2} ${cx-w/2},${cy}" style="fill:var(--good)"/>`;
+      const L=String(label).split("\n"), sy=cy-(L.length-1)*8+4;
+      return t+L.map((ln,i)=>`<text x="${cx}" y="${sy+i*16}" text-anchor="middle" style="fill:#fff;font-weight:800;font-size:11.5px">${esc(ln)}</text>`).join(""); };
+    const mkLine=(x1,y1,x2,y2,lab,lx,ly)=>{ let t=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:var(--line-strong);stroke-width:2.4" marker-end="url(#arrow)"/>`;
+      if(lab) t+=`<text x="${lx}" y="${ly}" text-anchor="middle" style="fill:var(--ink-soft);font-weight:800;font-size:11px">${esc(lab)}</text>`; return t; };
+    const mkCond=(cx,y,txt)=>{ const L=String(txt).split("\n"); return L.map((ln,i)=>`<text x="${cx}" y="${y+i*12}" text-anchor="middle" style="fill:var(--ink-soft);font-size:10px">${esc(ln)}</text>`).join(""); };
+    s+=mkBox(410,10,190,42,"Model selection","var(--c6)");
+    s+=mkDia(410,119,250,98,"Data has known\noutput (labels)?");
+    s+=mkLine(410,52,410,70);
+    s+=mkBox(220,100,190,44,"Unsupervised method","var(--c6)");
+    s+=mkBox(640,100,190,44,"Supervised method","var(--c6)");
+    s+=mkLine(285,119,316,120,"No",300,108);
+    s+=mkLine(535,119,545,120,"Yes",540,108);
+    s+=mkLine(220,144,250,190);
+    s+=mkLine(640,144,665,190);
+    s+=mkDia(250,230,250,80,"Expected output");
+    s+=mkDia(665,230,250,80,"Expected output");
+    [[80,"Clustering methods","Categories /\nclusters"],[250,"Association Rules","Associations between\nindependent variables"],[420,"Dimensionality\nReduction","Reducing #\nselected features"]].forEach(([cx,lab,c])=>{
+      s+=mkLine(250,270,cx,326); s+=mkCond(cx,300,c); s+=mkBox(cx,326,150,40,lab,"var(--c6)"); });
+    [[590,"Classification Method","Categorical"],[740,"Regression method","Numerical\n(continuous metric)"]].forEach(([cx,lab,c])=>{
+      s+=mkLine(665,270,cx,326); s+=mkCond(cx,300,c); s+=mkBox(cx,326,140,40,lab,"var(--c6)"); });
+    s+=`</svg>`; box.innerHTML=s;
+  }
+
+  else if(d.kind==="layers"){
+    const W=640,H=340;
+    let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="artificial neural network">`;
+    const cols=[[100,[90,170,250],"Input"],[320,[70,140,210,280],"Hidden"],[540,[130,210],"Output"]];
+    const nodes=cols.map(c=>c[1].map(y=>({x:c[0],y})));
+    // connections
+    for(let i=0;i<nodes.length-1;i++) nodes[i].forEach(a=>nodes[i+1].forEach(b=>{
+      s+=`<line x1="${a.x+22}" y1="${a.y}" x2="${b.x-22}" y2="${b.y}" style="stroke:var(--line-strong);stroke-width:1.4;opacity:.7"/>`;
+    }));
+    cols.forEach((c,i)=>{ s+=`<text x="${c[0]}" y="34" text-anchor="middle" style="font-weight:900;fill:var(--ink)">${c[2]}</text>`;
+      c[1].forEach(y=>{ s+=`<circle cx="${c[0]}" cy="${y}" r="22" style="fill:var(--c10);stroke:rgba(0,0,0,.12);stroke-width:2"/>`; });
+    });
+    // legend boxes
+    s+=`<rect x="430" y="20" width="196" height="40" rx="10" style="fill:var(--c3);fill-opacity:.4;stroke:var(--c3)"/><text x="528" y="45" text-anchor="middle" style="font-size:12px;font-weight:800;fill:var(--ink)">Connection (edge, synapse)</text>`;
+    s+=`<rect x="440" y="296" width="180" height="36" rx="10" style="fill:var(--c3);fill-opacity:.4;stroke:var(--c3)"/><text x="530" y="319" text-anchor="middle" style="font-size:12px;font-weight:800;fill:var(--ink)">Node (neuron)</text>`;
+    s+=`<line x1="430" y1="40" x2="350" y2="80" style="stroke:var(--ink-soft);stroke-width:1.5"/>`;
+    s+=`<line x1="440" y1="314" x2="420" y2="290" style="stroke:var(--ink-soft);stroke-width:1.5"/>`;
+    s+=`</svg>`; box.innerHTML=s;
+  }
+}
+
+/* polynomial least-squares fit (used by the curves diagram + bias-variance demo) */
+function polyFit(xs, ys, deg){
+  // normal equations: (X^T X) c = X^T y
+  const n=deg+1;
+  const A=Array.from({length:n},()=>Array(n).fill(0));
+  const b=Array(n).fill(0);
+  for(let k=0;k<xs.length;k++){
+    const x=xs[k], y=ys[k];
+    const pw=Array(2*deg+1); pw[0]=1; for(let j=1;j<=2*deg;j++) pw[j]=pw[j-1]*x;
+    for(let i=0;i<n;i++){ for(let j=0;j<n;j++) A[i][j]+=pw[i+j]; b[i]+=pw[i]*y; }
+  }
+  return solve(A,b);
+}
+function polyEval(c,x){ let y=0; for(let i=c.length-1;i>=0;i--) y=y*x+c[i]; return y; }
+function solve(A,b){
+  const n=b.length; const M=A.map((r,i)=>r.concat([b[i]]));
+  for(let i=0;i<n;i++){
+    let p=i; for(let r=i+1;r<n;r++) if(Math.abs(M[r][i])>Math.abs(M[p][i])) p=r;
+    [M[i],M[p]]=[M[p],M[i]];
+    if(Math.abs(M[i][i])<1e-9) continue;
+    for(let r=0;r<n;r++) if(r!==i){ const f=M[r][i]/M[i][i]; for(let c=i;c<=n;c++) M[r][c]-=f*M[i][c]; }
+  }
+  return M.map((row,i)=> Math.abs(row[i])<1e-9 ? 0 : row[n]/row[i]);
+}
+
+/* =========================================================================
+   MACHINE LEARNING QUEST — engine part 2
+   level view · interactives · quiz · flashcards · drag&drop · charts ·
+   dashboard · boss level · boot
+   ========================================================================= */
+
+/* ------------------------------------------------------------------ LEVEL VIEW */
+function renderLevel(id){
+  const L = LEVELS.find(l=>l.id===id);
+  const host = $("#level-body"); host.innerHTML="";
+  host.style.setProperty("--accent", `var(${L.accent})`);
+  const done = state.levels[id].done;
+
+  // header
+  const head = el("div","lvl-head");
+  head.innerHTML = `<div class="crumb">Level ${L.id} of ${LEVELS.length} · ${state.levels[id].done?"completed ✅":(isUnlocked(id)?"unlocked":"locked")}</div>
+    <h1><span class="em">${L.icon}</span> ${esc(L.title)}</h1>
+    <p style="margin:0;color:var(--ink-soft)">${esc(L.blurb)}</p>`;
+  host.appendChild(head);
+  const back = el("button","btn ghost sm","← Back to map"); back.onclick=()=>go("home");
+  host.appendChild(el("div","row")).appendChild(back);
+
+  // explanation
+  host.appendChild(sectionTitle("📖","Explanation"));
+  const prose = el("div","card prose");
+  L.explanation.forEach(p=>prose.appendChild(el("p",null,p)));
+  host.appendChild(prose);
+
+  // analogies
+  if(L.analogies?.length){
+    host.appendChild(sectionTitle("💡","Analogies"));
+    const c = el("div","card");
+    L.analogies.forEach(a=>c.appendChild(el("div","analogy",`<b>${esc(a.t)}</b>${a.d}`)));
+    host.appendChild(c);
+  }
+
+  // key terms
+  if(L.terms?.length){
+    host.appendChild(sectionTitle("🔑","Key terms"));
+    const g = el("div","termgrid");
+    L.terms.forEach(t=>g.appendChild(el("div","term",`<b>${esc(t.t)}</b><p>${esc(t.d)}</p>`)));
+    host.appendChild(g);
+  }
+
+  // flowchart
+  if(L.flow){
+    host.appendChild(sectionTitle("🧭","Flowchart"));
+    const fig = el("div","figure");
+    fig.innerHTML = `<div class="fig-title">🗺️ ${esc(L.flow.title)}</div><p class="fig-cap">${esc(L.flow.cap)}</p>
+      <div class="fc-scroll"></div><div class="fc-detail" aria-live="polite"></div>
+      <p class="fc-hint">Tip: click / tap any box to read what it means.</p>`;
+    host.appendChild(fig);
+    renderFlow(L.flow, fig.querySelector(".fc-scroll"));
+  }
+
+  // diagrams
+  if(L.diagrams?.length){
+    host.appendChild(sectionTitle("🖼️","Diagrams"));
+    L.diagrams.forEach(d=>renderDiagram(d, host));
+  }
+
+  // interactive demo
+  if(L.interactive){
+    host.appendChild(sectionTitle("🎮","Play with it"));
+    host.appendChild(buildInteractive(L.interactive));
+  }
+
+  // flashcards
+  if(L.flashcards?.length){
+    host.appendChild(sectionTitle("🃏","Flashcards"));
+    host.appendChild(buildFlashcards(L.flashcards));
+  }
+
+  // drag & drop
+  if(L.dnd){
+    host.appendChild(sectionTitle("🧲","Drag & drop challenge"));
+    host.appendChild(buildDnD(L.dnd));
+  }
+
+  // quiz
+  if(L.quiz?.length){
+    host.appendChild(sectionTitle("❓","Quiz"));
+    host.appendChild(buildQuiz(L.quiz, {levelId:id}));
+  }
+
+  host.appendChild(el("div","divider"));
+  const fin = el("button","btn primary", done?"Replay the quiz":"Finish this level ✓");
+  fin.onclick = ()=>{
+    const st = state.levels[id];
+    if(st.total===0){ toast("Answer the quiz first!", "bad"); return; }
+    if(!st.done){
+      st.done = true;
+      const pct = Math.round(st.correct/st.total*100);
+      state.best[id] = Math.max(state.best[id]||0, pct);
+      addXP(25, "level complete");
+      confetti(); checkBadges(); save();
+      showModal({em:"🏅", title:`Level ${id} complete!`, body:`You scored <b>${pct}%</b>. ${isUnlocked(id+1)&&id<LEVELS.length?"Level "+(id+1)+" is now unlocked.":""}`, cta:"Back to map", onCta:()=>go("home")});
+    } else { go("home"); }
+  };
+  host.appendChild(fin);
+}
+
+function sectionTitle(icon, text){
+  return el("div","section-title",`<span>${icon}</span> ${esc(text)}`);
+}
+
+/* =========================================================================
+   INTERACTIVE DEMOS (HTML canvas, no libraries)
+   ========================================================================= */
+function canvasCtx(cv){
+  const ctx = cv.getContext("2d");
+  return ctx;
+}
+function ptr(cv, e){
+  const r = cv.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (cv.width / r.width);
+  const y = (e.clientY - r.top) * (cv.height / r.height);
+  return {x,y};
+}
+
+function buildInteractive(spec){
+  const wrap = el("div","demo");
+  wrap.style.setProperty("--accent","var(--brand)");
+  wrap.innerHTML = `<div class="demo-head"><b>${esc(spec.title)}</b><span class="hint">${esc(spec.cap)}</span></div>
+    <div class="demo-body"></div>`;
+  const body = wrap.querySelector(".demo-body");
+  const cv = el("canvas"); cv.width=680; cv.height=380; cv.setAttribute("role","img"); cv.setAttribute("aria-label", spec.title);
+  body.appendChild(cv);
+  const ctrls = el("div","ctrls"); body.appendChild(ctrls);
+  body.appendChild(el("p","hint", esc(spec.hint||"")));
+  const api = {cv, ctx:canvasCtx(cv), ctrls};
+  if(spec.kind==="linreg") demoLinReg(api);
+  if(spec.kind==="kmeans") demoKMeans(api);
+  if(spec.kind==="knn") demoKNN(api);
+  if(spec.kind==="biasvar") demoBiasVar(api);
+  return wrap;
+}
+
+/* ---- shared canvas scaffolding: data space 0..10 mapped to pixels ---- */
+function makeMapper(cv, pad=34){
+  const W=cv.width, H=cv.height;
+  return {
+    X: x => pad + (x/10)*(W-2*pad),
+    Y: y => H-pad - (y/10)*(H-2*pad),
+    invX: px => ((px-pad)/(W-2*pad))*10,
+    invY: py => ((H-pad-py)/(H-2*pad))*10,
+    pad, W, H
+  };
+}
+function drawAxes(ctx, m){
+  ctx.clearRect(0,0,m.W,m.H);
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--surface-2")||"#fff";
+  ctx.fillRect(0,0,m.W,m.H);
+  ctx.strokeStyle = "rgba(130,120,110,.25)"; ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){
+    ctx.beginPath(); ctx.moveTo(m.X(i), m.Y(0)); ctx.lineTo(m.X(i), m.Y(10)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(m.X(0), m.Y(i)); ctx.lineTo(m.X(10), m.Y(i)); ctx.stroke();
+  }
+  ctx.strokeStyle = "rgba(90,80,70,.6)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(m.X(0),m.Y(0)); ctx.lineTo(m.X(10),m.Y(0)); ctx.moveTo(m.X(0),m.Y(0)); ctx.lineTo(m.X(0),m.Y(10)); ctx.stroke();
+}
+
+/* ---------------- 1. Linear regression (drag points) ---------------- */
+function demoLinReg({cv,ctx,ctrls}){
+  const m = makeMapper(cv);
+  let pts = [[1.2,2.1],[2.4,3.2],[3.1,2.7],[4.6,5.4],[5.5,5.1],[6.8,7.2],[7.9,6.6],[9.0,8.4],[3.9,4.4],[6.1,6.9]];
+  let drag=-1, showRes=true;
+  const readout = el("span","readout",""); ctrls.appendChild(readout);
+  const bReset = el("button","btn sm","↺ Reset points"); bReset.onclick=()=>{ pts=[[1.2,2.1],[2.4,3.2],[3.1,2.7],[4.6,5.4],[5.5,5.1],[6.8,7.2],[7.9,6.6],[9.0,8.4],[3.9,4.4],[6.1,6.9]]; draw(); }; ctrls.appendChild(bReset);
+  const bRes = el("button","btn sm","Residuals: on"); bRes.onclick=()=>{ showRes=!showRes; bRes.textContent="Residuals: "+(showRes?"on":"off"); draw(); }; ctrls.appendChild(bRes);
+  ctrls.appendChild(el("span","hint","Drag a point · click empty space to add one"));
+
+  function fit(){
+    const n=pts.length; if(n<2) return {m:0,b:5};
+    let sx=0,sy=0,sxx=0,sxy=0;
+    pts.forEach(([x,y])=>{ sx+=x; sy+=y; sxx+=x*x; sxy+=x*y; });
+    const den = n*sxx - sx*sx; if(Math.abs(den)<1e-9) return {m:0,b:sy/n};
+    const slope=(n*sxy - sx*sy)/den, inter=(sy - slope*sx)/n;
+    return {m:slope, b:inter};
+  }
+  function draw(){
+    drawAxes(ctx,m);
+    const {m:sl,b:inr} = fit();
+    // best-fit line
+    ctx.strokeStyle="#ff7a59"; ctx.lineWidth=3.5; ctx.beginPath();
+    ctx.moveTo(m.X(0), m.Y(inr)); ctx.lineTo(m.X(10), m.Y(inr+sl*10)); ctx.stroke();
+    // residuals + points
+    pts.forEach(([x,y],i)=>{
+      const px=m.X(x), py=m.Y(y), pyh=m.Y(inr+sl*x);
+      if(showRes){ ctx.strokeStyle="rgba(150,140,130,.5)"; ctx.lineWidth=1.6; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px,pyh); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle = i===drag? "#12b886" : "#5c7cfa";
+      ctx.beginPath(); ctx.arc(px,py,9,0,7); ctx.fill();
+      ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke();
+    });
+    readout.textContent = `y ≈ ${sl.toFixed(2)}x + ${inr.toFixed(2)}   (n=${pts.length})`;
+  }
+  function pick(x,y){ let best=-1,bd=15; pts.forEach(([px,py],i)=>{ const d=Math.hypot(m.X(px)-x,m.Y(py)-y); if(d<bd){bd=d;best=i;} }); return best; }
+  cv.addEventListener("pointerdown", e=>{
+    cv.setPointerCapture(e.pointerId);
+    const p=ptr(cv,e); const i=pick(p.x,p.y);
+    if(i>=0) drag=i; else { pts.push([clamp(m.invX(p.x),0,10), clamp(m.invY(p.y),0,10)]); }
+    draw();
+  });
+  cv.addEventListener("pointermove", e=>{
+    if(drag<0) return; const p=ptr(cv,e);
+    pts[drag]=[clamp(m.invX(p.x),0,10), clamp(m.invY(p.y),0,10)]; draw();
+  });
+  cv.addEventListener("pointerup", ()=>{ drag=-1; });
+  cv.addEventListener("pointercancel", ()=>{ drag=-1; });
+  draw();
+}
+
+/* ---------------- 2. K-means clustering ---------------- */
+function demoKMeans({cv,ctx,ctrls}){
+  const m = makeMapper(cv);
+  const COLS=["#ff6b6b","#4dabf7","#20c997","#9775fa","#ffb020","#f06595"];
+  let pts=[], cents=[], k=3, iter=0, running=null, tween=null;
+  function rnd(){ return Array.from({length:60},()=>[Math.random()*10, Math.random()*10]); }
+  function init(){
+    pts = rnd(); iter=0; setK(k);
+  }
+  function setK(kk){
+    k=kk; cents = Array.from({length:k},(_,i)=>[1+i*(9/k), 2+((i*3)%7)]);
+    iter=0; draw();
+  }
+  function assign(){ return pts.map(p=>{ let bi=0,bd=1e9; cents.forEach((c,i)=>{ const d=(p[0]-c[0])**2+(p[1]-c[1])**2; if(d<bd){bd=d;bi=i;} }); return bi; }); }
+  function step(){
+    const a=assign();
+    const sums=Array.from({length:k},()=>[0,0,0]);
+    pts.forEach((p,i)=>{ sums[a[i]][0]+=p[0]; sums[a[i]][1]+=p[1]; sums[a[i]][2]++; });
+    const from=cents.map(c=>c.slice());
+    const to=sums.map((s,i)=> s[2]? [s[0]/s[2], s[1]/s[2]] : cents[i].slice());
+    iter++; animateTween(from,to,()=>{ cents=to.map(c=>c.slice()); draw(); });
+  }
+  function animateTween(from,to,done){
+    const t0=performance.now(), dur=380;
+    (function f(t){
+      const u=clamp((t-t0)/dur,0,1), e=u<.5?2*u*u:1-((-2*u+2)**2)/2;
+      cents = from.map((c,i)=>[c[0]+(to[i][0]-c[0])*e, c[1]+(to[i][1]-c[1])*e]);
+      draw();
+      if(u<1) requestAnimationFrame(f); else done&&done();
+    })(t0);
+  }
+  function draw(){
+    drawAxes(ctx,m);
+    const a=assign();
+    // colour regions by nearest centroid (coarse grid)
+    const gs=12;
+    for(let gx=0; gx<m.W; gx+=gs) for(let gy=0; gy<m.H; gy+=gs){
+      const dx=m.invX(gx+gs/2), dy=m.invY(gy+gs/2);
+      let bi=0,bd=1e9; cents.forEach((c,i)=>{ const d=(dx-c[0])**2+(dy-c[1])**2; if(d<bd){bd=d;bi=i;} });
+      ctx.fillStyle = COLS[bi%COLS.length]+"22"; ctx.fillRect(gx,gy,gs,gs);
+    }
+    pts.forEach((p,i)=>{ ctx.fillStyle=COLS[a[i]%COLS.length]; ctx.beginPath(); ctx.arc(m.X(p[0]),m.Y(p[1]),6,0,7); ctx.fill(); });
+    cents.forEach((c,i)=>{ const px=m.X(c[0]),py=m.Y(c[1]);
+      ctx.fillStyle=COLS[i%COLS.length]; ctx.strokeStyle="#fff"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(px,py-13); ctx.lineTo(px+13,py); ctx.lineTo(px,py+13); ctx.lineTo(px-13,py); ctx.closePath(); ctx.fill(); ctx.stroke();
+    });
+    readout.textContent = `k = ${k}   ·   iterations = ${iter}`;
+  }
+  const readout = el("span","readout",""); ctrls.appendChild(readout);
+  const lab = el("label",null,`K = <b>3</b>`);
+  const rng = el("input"); rng.type="range"; rng.min=2; rng.max=6; rng.value=3; rng.setAttribute("aria-label","number of clusters");
+  rng.oninput=()=>{ lab.querySelector("b").textContent=rng.value; setK(+rng.value); };
+  lab.appendChild(rng); ctrls.appendChild(lab);
+  const bStep=el("button","btn sm","▶ Step"); bStep.onclick=step; ctrls.appendChild(bStep);
+  const bRun=el("button","btn sm","⏩ Run"); bRun.onclick=()=>{ if(running){ clearInterval(running); running=null; bRun.textContent="⏩ Run"; } else { running=setInterval(step,650); bRun.textContent="⏸ Stop"; } }; ctrls.appendChild(bRun);
+  const bRst=el("button","btn sm","↺ New points"); bRst.onclick=init; ctrls.appendChild(bRst);
+  ctrls.appendChild(el("span","hint","Click the canvas to add points"));
+  cv.addEventListener("pointerdown", e=>{ const p=ptr(cv,e); pts.push([clamp(m.invX(p.x),0,10),clamp(m.invY(p.y),0,10)]); draw(); });
+  init();
+}
+
+/* ---------------- 3. KNN decision boundary ---------------- */
+function demoKNN({cv,ctx,ctrls}){
+  const m = makeMapper(cv);
+  const C0="#4dabf7", C1="#ff6b6b";
+  let pts=[], k=5, curClass=0;
+  function seed(){ pts=[]; for(let i=0;i<26;i++){ const x=Math.random()*10,y=Math.random()*10; pts.push([x,y, (x+y<10?0:1) ]); } }
+  function classify(x,y){
+    const d=pts.map(p=>[Math.hypot(p[0]-x,p[1]-y), p[2]]).sort((a,b)=>a[0]-b[0]).slice(0,k);
+    const s=d.reduce((t,v)=>t+(v[1]?1:-1),0);
+    return s>=0?1:0;
+  }
+  function draw(){
+    drawAxes(ctx,m);
+    const gs=11;
+    for(let gx=0; gx<m.W; gx+=gs) for(let gy=0; gy<m.H; gy+=gs){
+      const c=classify(m.invX(gx+gs/2), m.invY(gy+gs/2));
+      ctx.fillStyle = (c? C1:C0)+"26"; ctx.fillRect(gx,gy,gs,gs);
+    }
+    pts.forEach(p=>{ ctx.fillStyle=p[2]?C1:C0; ctx.beginPath(); ctx.arc(m.X(p[0]),m.Y(p[1]),8,0,7); ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke(); });
+  }
+  const lab=el("label",null,`K = <b>5</b>`);
+  const rng=el("input"); rng.type="range"; rng.min=1; rng.max=9; rng.step=2; rng.value=5; rng.setAttribute("aria-label","neighbours");
+  rng.oninput=()=>{ lab.querySelector("b").textContent=rng.value; k=+rng.value; draw(); };
+  lab.appendChild(rng); ctrls.appendChild(lab);
+  const seg=el("div","seg");
+  const b0=el("button","on","Class A"); const b1=el("button",null,"Class B");
+  b0.onclick=()=>{curClass=0;b0.classList.add("on");b1.classList.remove("on");};
+  b1.onclick=()=>{curClass=1;b1.classList.add("on");b0.classList.remove("on");};
+  seg.append(b0,b1); ctrls.appendChild(seg);
+  const bR=el("button","btn sm","↺ Reset"); bR.onclick=()=>{seed();draw();}; ctrls.appendChild(bR);
+  ctrls.appendChild(el("span","hint","Click to drop a point of the selected class"));
+  cv.addEventListener("pointerdown", e=>{ const p=ptr(cv,e); pts.push([clamp(m.invX(p.x),0,10),clamp(m.invY(p.y),0,10),curClass]); draw(); });
+  seed(); draw();
+}
+
+/* ---------------- 4. Underfitting / overfitting (bias-variance) ---------------- */
+function demoBiasVar({cv,ctx,ctrls}){
+  const W=cv.width,H=cv.height, pad=34;
+  const X = x => pad + x*(W-2*pad), Y = y => H-pad - y*(H-2*pad);
+  // fixed dataset, split into train / test
+  let data=[]; for(let i=0;i<22;i++){ const x=i/21; data.push({x, y:0.5+0.34*Math.sin(x*6.2)+(Math.random()-0.5)*0.16, test:(i%4===3)}); }
+  let deg=3;
+  function mse(list,co){ return list.reduce((t,d)=>t+(polyEval(co,d.x)-d.y)**2,0)/Math.max(1,list.length); }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle=getComputedStyle(document.body).getPropertyValue("--surface-2"); ctx.fillRect(0,0,W,H);
+    // frame
+    ctx.strokeStyle="rgba(90,80,70,.5)"; ctx.lineWidth=2; ctx.strokeRect(pad, pad-6, W-2*pad, H-2*pad+6);
+    const train=data.filter(d=>!d.test), test=data.filter(d=>d.test);
+    const co=polyFit(train.map(d=>d.x), train.map(d=>d.y), deg);
+    // curve
+    ctx.strokeStyle="#ff7a59"; ctx.lineWidth=3.5; ctx.beginPath();
+    for(let i=0;i<=120;i++){ const x=i/120; const px=X(x), py=Y(clamp(polyEval(co,x),0,1)); i?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.stroke();
+    // points
+    data.forEach(d=>{ const px=X(d.x), py=Y(d.y);
+      ctx.beginPath(); ctx.arc(px,py,6,0,7);
+      ctx.fillStyle = d.test? "transparent":"#5c7cfa";
+      if(!d.test) ctx.fill();
+      ctx.strokeStyle = d.test? "#f0506e":"#5c7cfa"; ctx.lineWidth=2.5; ctx.stroke();
+    });
+    const tr=mse(train,co), te=mse(test,co);
+    let verdict = deg<=2? "Underfitting (high bias)" : deg>=7? "Overfitting (high variance)" : "Balanced fit";
+    readout.innerHTML = `degree ${deg} · train MSE ${tr.toFixed(4)} · test MSE ${te.toFixed(4)} <b>→ ${verdict}</b>`;
+  }
+  const readout = el("span","readout",""); ctrls.appendChild(readout);
+  const lab=el("label",null,`Complexity (polynomial degree) = <b>3</b>`);
+  const rng=el("input"); rng.type="range"; rng.min=1; rng.max=9; rng.value=3; rng.setAttribute("aria-label","model complexity");
+  rng.oninput=()=>{ lab.querySelector("b").textContent=rng.value; deg=+rng.value; draw(); };
+  lab.appendChild(rng); ctrls.appendChild(lab);
+  ctrls.appendChild(el("span","hint","Filled = training points · hollow red = test points"));
+  draw();
+}
+
+/* =========================================================================
+   QUIZ ENGINE
+   ========================================================================= */
+function buildQuiz(questions, opts){
+  const wrap = el("div","quiz");
+  const result = el("div","explain"); // summary area
+  const progress = el("div","row");
+  progress.innerHTML = `<span class="chip">❤️ <b class="hp">${state.hearts}</b></span> <span class="chip">✅ <b class="qp">0</b>/${questions.length}</span>`;
+  wrap.appendChild(progress);
+  let answered=0, correct=0;
+
+  questions.forEach((q, qi)=>{
+    const box = el("div","q");
+    const tag = q.type==="mc"?"Multiple choice":q.type==="tf"?"True / False":"Fill in the blank";
+    box.appendChild(el("div","qtag",`Q${qi+1} · ${tag}`));
+    box.appendChild(el("div","qtext", q.q));
+    const fb = el("div","explain");
+
+    function resolve(ok, correctText){
+      if(box.dataset.done) return;
+      box.dataset.done="1"; answered++;
+      if(ok){ correct++; addXP(10); } else { state.hearts=Math.max(0,state.hearts-1); renderHUD(); if(state.hearts===0) outOfHearts(); }
+      fb.innerHTML = `<b>${ok?"Correct!":"Not quite."}</b> ${q.explain||""}${correctText?`<br><span style="opacity:.8">Answer: ${esc(correctText)}</span>`:""}`;
+      fb.classList.add("show");
+      progress.querySelector(".hp").textContent = state.hearts;
+      progress.querySelector(".qp").textContent = answered;
+      if(answered===questions.length) finish();
+    }
+
+    if(q.type==="mc"){
+      const optsEl = el("div","opts");
+      q.opts.forEach((o,i)=>{
+        const b=el("button","opt",`<span class="k">${"ABCD"[i]}</span><span>${esc(o)}</span>`);
+        b.onclick=()=>{
+          if(box.dataset.done) return;
+          const ok = i===q.ans;
+          $$(".opt",optsEl).forEach((x,j)=>{ x.disabled=true; if(j===q.ans) x.classList.add("correct"); });
+          if(!ok) b.classList.add("wrong");
+          resolve(ok, q.opts[q.ans]);
+        };
+        optsEl.appendChild(b);
+      });
+      box.appendChild(optsEl);
+    }
+    else if(q.type==="tf"){
+      const optsEl = el("div","opts");
+      [["True",true],["False",false]].forEach(([lab,val])=>{
+        const b=el("button","opt",`<span class="k">${val?"T":"F"}</span><span>${lab}</span>`);
+        b.onclick=()=>{
+          if(box.dataset.done) return;
+          const ok = (val===q.ans);
+          $$(".opt",optsEl).forEach(x=>x.disabled=true);
+          b.classList.add(ok?"correct":"wrong");
+          if(!ok) $$(".opt",optsEl)[q.ans?0:1].classList.add("correct");
+          resolve(ok, q.ans?"True":"False");
+        };
+        optsEl.appendChild(b);
+      });
+      box.appendChild(optsEl);
+    }
+    else { // fib
+      const inp = el("input","fibinput"); inp.placeholder="type your answer…"; inp.setAttribute("aria-label","your answer");
+      const b = el("button","btn sm","Check");
+      const row = el("div","row"); row.append(inp,b); box.appendChild(row);
+      function check(){
+        if(box.dataset.done) return;
+        const val = inp.value.trim().toLowerCase().replace(/[.!?]/g,"");
+        const ans = Array.isArray(q.ans)? q.ans : [q.ans];
+        const ok = ans.some(a=> val===String(a).toLowerCase() || (val.length>3 && String(a).toLowerCase().includes(val)));
+        inp.disabled=true; b.disabled=true;
+        inp.style.borderColor = ok? "var(--good)":"var(--bad)";
+        resolve(ok, ans[0]);
+      }
+      b.onclick=check; inp.addEventListener("keydown",e=>{ if(e.key==="Enter") check(); });
+      box.appendChild(fb);
+      wrap.appendChild(box); return; // fb already appended for fib
+    }
+    box.appendChild(fb);
+    wrap.appendChild(box);
+  });
+
+  function finish(){
+    if(opts.levelId){
+      const st = state.levels[opts.levelId];
+      st.correct += correct; st.total += questions.length; st.seen=true;
+      state.best[opts.levelId] = Math.max(state.best[opts.levelId]||0, Math.round(correct/questions.length*100));
+    }
+    save(); checkBadges();
+    const pct = Math.round(correct/questions.length*100);
+    result.innerHTML = `<b>Quiz complete — ${correct}/${questions.length} (${pct}%).</b> ${pct>=80?"Great work!":"Review the explanation above, then replay for a better score."}`;
+    result.classList.add("show");
+    if(pct>=80) confetti(60);
+    toast(`Quiz done: ${correct}/${questions.length}`, pct>=60?"good":"bad");
+    renderHUD();
+  }
+
+  const replay = el("button","btn sm","↺ Replay quiz");
+  replay.onclick=()=>{ if(opts.levelId) renderLevel(opts.levelId); else renderBoss(); };
+  const foot = el("div","quiz-foot"); foot.appendChild(replay);
+  wrap.appendChild(foot);
+  wrap.appendChild(result);
+  return wrap;
+}
+
+function outOfHearts(){
+  showModal({em:"💔", title:"Out of hearts!", body:"No harm done — mistakes are how we learn. Take a breath and try again; your hearts are refilled.", cta:"Refill hearts", onCta:()=>{ state.hearts=HEARTS_MAX; renderHUD(); save(); }});
+}
+
+/* =========================================================================
+   FLASHCARDS
+   ========================================================================= */
+function buildFlashcards(cards){
+  const g = el("div","flashgrid");
+  cards.forEach(c=>{
+    const f = el("button","flash");
+    f.innerHTML = `<div class="inner">
+      <div class="face front"><b>${esc(c.front)}</b><span class="flip-tag">tap to flip</span></div>
+      <div class="face back"><span>${esc(c.back)}</span><span class="flip-tag">tap to flip back</span></div></div>`;
+    f.onclick=()=>f.classList.toggle("flipped");
+    f.setAttribute("aria-label","flashcard: "+c.front);
+    g.appendChild(f);
+  });
+  return g;
+}
+
+/* =========================================================================
+   DRAG & DROP
+   ========================================================================= */
+function buildDnD(spec){
+  const wrap = el("div","card");
+  wrap.appendChild(el("h3",null, spec.title));
+  wrap.appendChild(el("p",null, esc(spec.prompt)));
+  const status = el("div","row"); wrap.appendChild(status);
+  const checkBtn = el("button","btn sm primary","Check answers");
+
+  if(spec.kind==="order"){
+    const slots = el("div","dnd-slots");
+    spec.items.forEach((_,i)=>{
+      const s = el("div","dnd-slot"); s.dataset.pos=i;
+      s.innerHTML = `<span class="idx">${i+1}</span><span class="val" style="color:var(--ink-faint)">drop here</span>`;
+      slots.appendChild(s);
+    });
+    const pool = el("div","dnd-pool");
+    // shuffle a copy
+    const shuffled = spec.items.map((t,i)=>({t,i})).sort(()=>Math.random()-.5);
+    shuffled.forEach(o=>{
+      const chip = el("button","dnd-chip", esc(o.t)); chip.draggable=true; chip.dataset.correct=o.i;
+      chip.addEventListener("dragstart",e=>{ e.dataTransfer.setData("text/plain", o.t); chip.classList.add("dragging"); wrap._drag=chip; });
+      chip.addEventListener("dragend",()=>chip.classList.remove("dragging"));
+      chip.addEventListener("click",()=>placeInNext(chip));
+      pool.appendChild(chip);
+    });
+    slots.addEventListener("dragover",e=>{ e.preventDefault(); const s=e.target.closest(".dnd-slot"); if(s){ $$(".dnd-slot",slots).forEach(x=>x.classList.remove("over")); s.classList.add("over"); } });
+    slots.addEventListener("dragleave",e=>{ const s=e.target.closest(".dnd-slot"); if(s) s.classList.remove("over"); });
+    slots.addEventListener("drop",e=>{ e.preventDefault(); const s=e.target.closest(".dnd-slot"); if(s&&wrap._drag){ setSlot(s, wrap._drag); } });
+    function setSlot(slot, chip){
+      const prev = $$(".dnd-chip", slot);
+      prev.forEach(p=>{ pool.appendChild(p); p.classList.remove("placed"); });
+      slot.querySelector(".val").style.display="none";
+      slot.appendChild(chip); chip.classList.add("placed"); chip.draggable=true;
+      slot.classList.remove("over");
+    }
+    function placeInNext(chip){
+      const empty = $$(".dnd-slot",slots).find(s=>!s.querySelector(".dnd-chip"));
+      const target = empty || $$(".dnd-slot",slots)[0];
+      setSlot(target, chip);
+    }
+    checkBtn.onclick=()=>{
+      let ok=0;
+      $$(".dnd-slot",slots).forEach(s=>{
+        const chip=s.querySelector(".dnd-chip");
+        s.classList.remove("ok","no");
+        if(chip){ const good = +chip.dataset.correct === +s.dataset.pos; s.classList.add(good?"ok":"no"); if(good) ok++; }
+      });
+      status.innerHTML = `<span class="chip">${ok===spec.items.length?"🎉 Perfect!":"✅ "+ok+" / "+spec.items.length+" correct"}</span>`;
+      if(ok===spec.items.length && !wrap.dataset.rewarded){ wrap.dataset.rewarded="1"; addXP(15,"activity"); confetti(50); }
+    };
+    wrap.appendChild(slots); wrap.appendChild(el("p","hint","Drag a chip into a slot — or tap a chip to place it."));
+    wrap.appendChild(pool); wrap.appendChild(checkBtn);
+  }
+
+  else { // match
+    const grid = el("div","dnd-match");
+    const pool = el("div","dnd-pool");
+    const rights = spec.pairs.map((p,i)=>({t:p.right,i})).sort(()=>Math.random()-.5);
+    rights.forEach(o=>{
+      const chip=el("button","dnd-chip",esc(o.t)); chip.draggable=true; chip.dataset.correct=o.i;
+      chip.addEventListener("dragstart",()=>{ wrap._drag=chip; chip.classList.add("dragging"); });
+      chip.addEventListener("dragend",()=>chip.classList.remove("dragging"));
+      chip.addEventListener("click",()=>placeNext(chip));
+      pool.appendChild(chip);
+    });
+    spec.pairs.forEach((p,i)=>{
+      const row=el("div","dnd-mrow");
+      row.innerHTML = `<div class="termbox">${esc(p.left)}</div>`;
+      const drop=el("div","dnd-drop"); drop.dataset.pos=i; drop.textContent="drop here";
+      row.appendChild(drop); grid.appendChild(row);
+      drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("over");});
+      drop.addEventListener("dragleave",()=>drop.classList.remove("over"));
+      drop.addEventListener("drop",e=>{e.preventDefault(); if(wrap._drag) setDrop(drop,wrap._drag);});
+    });
+    function setDrop(drop,chip){
+      const prev=drop.querySelector(".dnd-chip"); if(prev){ pool.appendChild(prev); prev.classList.remove("placed"); }
+      if(drop.textContent.trim()==="drop here") drop.textContent="";
+      drop.appendChild(chip); chip.classList.add("placed"); drop.classList.remove("over");
+    }
+    function placeNext(chip){
+      const empty=$$(".dnd-drop",grid).find(d=>!d.querySelector(".dnd-chip"));
+      if(empty) setDrop(empty,chip);
+    }
+    checkBtn.onclick=()=>{
+      let ok=0;
+      $$(".dnd-drop",grid).forEach(d=>{
+        const chip=d.querySelector(".dnd-chip"); d.classList.remove("ok","no");
+        if(chip){ const good=+chip.dataset.correct===+d.dataset.pos; d.classList.add(good?"ok":"no"); if(good)ok++; }
+      });
+      status.innerHTML=`<span class="chip">${ok===spec.pairs.length?"🎉 Perfect!":"✅ "+ok+" / "+spec.pairs.length+" correct"}</span>`;
+      if(ok===spec.pairs.length && !wrap.dataset.rewarded){ wrap.dataset.rewarded="1"; addXP(15,"activity"); confetti(50); }
+    };
+    wrap.appendChild(grid); wrap.appendChild(el("p","hint","Drag a chip onto a term — or tap a chip to place it."));
+    wrap.appendChild(pool); wrap.appendChild(checkBtn);
+  }
+  return wrap;
+}
+
+/* =========================================================================
+   CHARTS (SVG)
+   ========================================================================= */
+function lineChart(data, w=640, h=220){
+  const pad=40; const max=Math.max(10, ...data.map(d=>d.value));
+  const X=i=> pad + (data.length<2?0:(i/(data.length-1))*(w-pad*1.4));
+  const Y=v=> h-pad - (v/max)*(h-pad*1.6);
+  let s=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto" role="img" aria-label="XP over time">`;
+  for(let g=0; g<=4; g++){ const y=h-pad-(g/4)*(h-pad*1.6); s+=`<line x1="${pad}" y1="${y}" x2="${w-20}" y2="${y}" style="stroke:var(--line)"/><text x="${pad-6}" y="${y+4}" text-anchor="end" style="font-size:10px;fill:var(--ink-faint)">${Math.round(max*g/4)}</text>`; }
+  const pts=data.map((d,i)=>[X(i),Y(d.value)]);
+  if(pts.length){
+    s+=`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--brand)" stroke-width="3.5" stroke-linejoin="round"/>`;
+    pts.forEach((p,i)=>{ s+=`<circle cx="${p[0]}" cy="${p[1]}" r="4.5" style="fill:var(--brand)"/><text x="${p[0]}" y="${h-pad+16}" text-anchor="middle" style="font-size:10px;fill:var(--ink-faint)">${esc(data[i].label)}</text>`; });
+  }
+  s+=`</svg>`; return s;
+}
+function barChart(data, w=640, h=240){
+  const pad=40; const max=100;
+  const bw=(w-pad-20)/Math.max(1,data.length);
+  let s=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto" role="img" aria-label="accuracy per topic">`;
+  for(let g=0; g<=4; g++){ const y=h-pad-(g/4)*(h-pad*1.6); s+=`<line x1="${pad}" y1="${y}" x2="${w-20}" y2="${y}" style="stroke:var(--line)"/><text x="${pad-6}" y="${y+4}" text-anchor="end" style="font-size:10px;fill:var(--ink-faint)">${g*25}%</text>`; }
+  data.forEach((d,i)=>{
+    const x=pad+i*bw+bw*0.15, bh=(d.value/max)*(h-pad*1.6), y=h-pad-bh;
+    s+=`<rect x="${x}" y="${y}" width="${bw*0.7}" height="${Math.max(2,bh)}" rx="6" style="fill:var(${d.color||'--c7'})"/>`;
+    s+=`<text x="${x+bw*0.35}" y="${h-pad+14}" text-anchor="middle" style="font-size:9.5px;fill:var(--ink-faint)">${esc(d.label)}</text>`;
+    if(d.value>0) s+=`<text x="${x+bw*0.35}" y="${y-5}" text-anchor="middle" style="font-size:10px;font-weight:800;fill:var(--ink-soft)">${d.value}%</text>`;
+  });
+  s+=`</svg>`; return s;
+}
+
+/* Concept chart — the bias–variance trade-off the deck describes.
+   Illustrative shape only: as complexity rises, training error keeps falling
+   while test error falls then rises (overfitting). Not a claim about any
+   particular model's measured accuracy. */
+function tradeoffChart(w=640, h=250){
+  const pad=44, max=1.1;
+  const X=c=> pad + ((c-1)/9)*(w-pad-24);
+  const Y=e=> h-pad - (e/max)*(h-pad*1.7);
+  const train=c=> 0.85*Math.exp(-0.5*c)+0.03;
+  const test =c=> 0.30 + 0.030*Math.pow(c-5,2)/1;
+  let s=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto" role="img" aria-label="bias variance trade-off">`;
+  for(let g=0;g<=4;g++){ const y=h-pad-(g/4)*(h-pad*1.7); s+=`<line x1="${pad}" y1="${y}" x2="${w-24}" y2="${y}" style="stroke:var(--line)"/>`; }
+  // region shading labels
+  s+=`<text x="${X(2)}" y="${h-pad+18}" text-anchor="middle" style="font-size:10px;fill:var(--ink-faint)">underfit zone</text>`;
+  s+=`<text x="${X(8.6)}" y="${h-pad+18}" text-anchor="middle" style="font-size:10px;fill:var(--ink-faint)">overfit zone</text>`;
+  s+=`<text x="${pad-6}" y="${h-pad+4}" text-anchor="end" style="font-size:10px;fill:var(--ink-faint)">0</text>`;
+  const path=(fn,col)=>{ let p=""; for(let c=1;c<=10;c+=0.25){ const x=X(c), y=Y(fn(c)); p+=(p?"L":"M")+x.toFixed(1)+","+y.toFixed(1); } return `<path d="${p}" fill="none" stroke="var(${col})" stroke-width="3"/>`; };
+  s+=path(train,"--c7"); s+=path(test,"--c1");
+  s+=`<circle cx="${X(4.6)}" cy="${Y(test(4.6))}" r="5" style="fill:var(--c5)"/>`;
+  s+=`<text x="${X(4.6)}" y="${Y(test(4.6))-10}" text-anchor="middle" style="font-size:10px;font-weight:800;fill:var(--ink-soft)">sweet spot</text>`;
+  s+=`<text x="${w-24}" y="20" text-anchor="end" style="font-size:11px;font-weight:800;fill:var(--c7)">train error</text>`;
+  s+=`<text x="${w-24}" y="36" text-anchor="end" style="font-size:11px;font-weight:800;fill:var(--c1)">test error</text>`;
+  s+=`<text x="${w/2}" y="${h-8}" text-anchor="middle" style="font-size:11px;fill:var(--ink-soft)">model complexity →</text>`;
+  s+=`</svg>`; return s;
+}
+
+/* =========================================================================
+   DASHBOARD
+   ========================================================================= */
+function renderDashboard(){
+  const host=$("#dash-body"); host.innerHTML="";
+  const doneCount = LEVELS.filter(l=>state.levels[l.id].done).length;
+  const acc = LEVELS.map(l=>{ const s=state.levels[l.id]; return {label:"L"+l.id, value: s.total? Math.round(s.correct/s.total*100):0, color:l.accent, id:l.id}; });
+
+  host.appendChild(el("div","statgrid")).innerHTML = `
+    <div class="stat"><div class="big">${state.xp}</div><div class="lbl">Total XP</div></div>
+    <div class="stat"><div class="big">${playerLevel()}</div><div class="lbl">Player level</div></div>
+    <div class="stat"><div class="big">${state.streak}</div><div class="lbl">Day streak 🔥</div></div>
+    <div class="stat"><div class="big">${doneCount}/${LEVELS.length}</div><div class="lbl">Levels done</div></div>`;
+
+  // XP over time (last 7 days)
+  const days=[]; for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const key=d.toISOString().slice(0,10);
+    days.push({label:d.toLocaleDateString(undefined,{weekday:"short"}), value: state.xpByDay[key]||0}); }
+  const xpBox = el("div","chartbox"); xpBox.innerHTML = `<h3>⭐ XP earned this week</h3>${lineChart(days)}`;
+  host.appendChild(el("div","stack")).appendChild(xpBox);
+
+  // accuracy per topic
+  const accBox = el("div","chartbox"); accBox.innerHTML = `<h3>🎯 Accuracy per topic</h3>${barChart(acc)}`;
+  host.appendChild(accBox);
+
+  // concept comparison chart
+  const cBox = el("div","chartbox");
+  cBox.innerHTML = `<h3>📉 Concept — the bias–variance trade-off</h3>
+    <p style="font-size:.84rem;color:var(--ink-faint);margin:-4px 0 8px">Illustrative. As model complexity rises, training error keeps falling while test error falls then climbs — the overfitting the deck describes.</p>${tradeoffChart()}`;
+  host.appendChild(cBox);
+
+  // weak topics
+  const weak = acc.filter(a=>a.value>0 && a.value<60);
+  host.appendChild(sectionTitle("🩹","Weak topics to revisit"));
+  const wc = el("div","card");
+  if(weak.length){
+    const list = el("div","weaklist");
+    weak.forEach(w=>{ const b=el("button","weak",`Level ${w.id} · ${w.value}%`); b.onclick=()=>go("level",w.id); list.appendChild(b); });
+    wc.appendChild(list);
+  } else wc.appendChild(el("p",null,"Nothing flagged — either you are doing well or you have not attempted the quizzes yet."));
+  host.appendChild(wc);
+
+  // badges
+  host.appendChild(sectionTitle("🏆","Badges"));
+  const bg = el("div","badges");
+  BADGES.forEach(b=>{
+    const has = state.badges.includes(b.id);
+    bg.appendChild(el("div","badge"+(has?"":" locked"),`<div class="bem">${has?b.em:"🔒"}</div><div class="bn">${esc(b.name)}</div><div class="bd">${esc(b.desc)}</div>`));
+  });
+  host.appendChild(bg);
+
+  // reset
+  const r = el("button","btn ghost sm","Reset all progress");
+  r.onclick=()=>showModal({em:"⚠️", title:"Reset progress?", body:"This clears your XP, badges, streak and scores on this device. It cannot be undone.", cta:"Yes, reset", onCta:()=>{ state=freshState(); save(); renderHUD(); renderMap(); go("home"); toast("Progress reset."); }});
+  host.appendChild(el("div","row")).appendChild(r);
+}
+
+/* =========================================================================
+   BOSS LEVEL
+   ========================================================================= */
+function renderBoss(){
+  const host=$("#boss-body"); host.innerHTML="";
+  host.style.setProperty("--accent","var(--cboss)");
+  const head=el("div","lvl-head");
+  head.innerHTML=`<div class="crumb">Final challenge</div><h1><span class="em">👑</span> ${esc(BOSS.title)}</h1><p style="margin:0;color:var(--ink-soft)">${esc(BOSS.blurb)}</p>`;
+  host.appendChild(head);
+  if(!allDone()){
+    host.appendChild(el("div","note",`<b>Locked.</b> Finish all ${LEVELS.length} levels to open the Boss Level.`));
+    const b=el("button","btn","← Back to map"); b.onclick=()=>go("home"); host.appendChild(b);
+    return;
+  }
+  const q = buildQuiz(BOSS.quiz, {});
+  // wrap finish to mark boss done — we re-use quiz then patch on completion
+  host.appendChild(q);
+  const done = el("button","btn primary","Finish Boss Level 👑");
+  done.onclick=()=>{
+    const stats = state.boss;
+    if(!state.boss.done){ state.boss.done=true; addXP(60,"boss defeated"); confetti(140); checkBadges(); save();
+      showModal({em:"👑", title:"You defeated the Boss Level!", body:"You have worked through every level of the deck. Outstanding.", cta:"See dashboard", onCta:()=>go("dashboard")}); }
+    else go("dashboard");
+  };
+  host.appendChild(el("div","divider")); host.appendChild(done);
+}
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", state.theme);
+  $("#theme-btn").textContent = state.theme==="dark" ? "☀️" : "🌙";
+  $("#theme-btn").setAttribute("aria-label", state.theme==="dark"?"Switch to light mode":"Switch to dark mode");
+}
+function boot(){
+  const had = load();
+  // daily: refresh hearts + streak
+  const t = todayStr();
+  if(state.lastHeartDay!==t){ state.hearts=HEARTS_MAX; state.lastHeartDay=t; }
+  if(state.lastVisit!==t){
+    if(state.lastVisit && dayDiff(state.lastVisit,t)===1) state.streak++;
+    else state.streak=1;
+    state.lastVisit=t;
+  }
+  applyTheme(); renderHUD(); renderMap(); save();
+  if(!had) setTimeout(()=>showModal({em:"🎮", title:"Welcome to Machine Learning Quest!", body:"Ten levels and a boss fight, built entirely from your two decks. Finish a level to unlock the next. Earn XP, keep your streak alive, and don't lose your hearts.", cta:"Let's go"}), 500);
+
+  $("#logo").onclick=()=>go("home");
+  $("#nav-map").onclick=()=>go("home");
+  $("#nav-dash").onclick=()=>go("dashboard");
+  $("#nav-boss").onclick=()=>go("boss");
+  $("#theme-btn").onclick=()=>{ state.theme = state.theme==="dark"?"light":"dark"; applyTheme(); save(); };
+}
+document.addEventListener("DOMContentLoaded", boot);
+
+</script>
+</body>
+</html>
